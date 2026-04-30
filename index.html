@@ -2206,17 +2206,28 @@ async function boot(){
     return;
   }
   CURRENT_SESSION = session;
+  // Mapeo explícito de mails especiales a miembros del equipo
+  var EMAIL_TO_USER = {
+    'contacto@comunidadmango.com': 'Camila',
+  };
   // Setear usuario actual basado en mail
   var nameFromEmail = email.split('@')[0];
-  var matchedTeam = (TEAM || []).find(function(t){return t.id===nameFromEmail || t.name.toLowerCase()===nameFromEmail.toLowerCase();});
-  if(matchedTeam) S.currentUser = matchedTeam.name;
+  var explicitMatch = EMAIL_TO_USER[email];
+  if(explicitMatch){
+    S.currentUser = explicitMatch;
+  }else{
+    var matchedTeam = (TEAM || []).find(function(t){return t.id===nameFromEmail || t.name.toLowerCase()===nameFromEmail.toLowerCase();});
+    if(matchedTeam) S.currentUser = matchedTeam.name;
+  }
   // Cargar datos
   setLoadingMsg('Cargando datos...');
   try{
     await bootData();
     // Re-match user después de cargar TEAM real
-    var matched = TEAM.find(function(t){return t.id===nameFromEmail || t.name.toLowerCase()===nameFromEmail.toLowerCase();});
-    if(matched) S.currentUser = matched.name;
+    if(!explicitMatch){
+      var matched = TEAM.find(function(t){return t.id===nameFromEmail || t.name.toLowerCase()===nameFromEmail.toLowerCase();});
+      if(matched) S.currentUser = matched.name;
+    }
   }catch(e){
     console.error('Error cargando datos:', e);
     showLogin('Error al cargar datos: ' + e.message);
