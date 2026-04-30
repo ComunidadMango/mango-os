@@ -1,0 +1,2242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Comunidad Mango · OS</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Raleway:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--dark:#323231;--cream:#f5f3ef;--gray-mid:#737373;--gray-light:#c6c5c5;--gray-bg:#fafaf8;--accent:#e8a020;--accent-light:#f5d08a;--success:#2e7d32;--success-bg:#e8f5e9;--info:#1565c0;--info-bg:#e3f2fd;--warn:#e65100;--warn-bg:#fff3e0;--danger:#c62828;--danger-bg:#ffebee;--sw:260px;--sw-c:72px;--tr:0.3s cubic-bezier(0.4,0,0.2,1)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--cream);color:var(--dark);font-family:'Raleway',sans-serif;min-height:100vh;overflow-x:hidden}
+#app{display:flex;min-height:100vh}
+#main{flex:1;margin-left:var(--sw);transition:margin-left var(--tr);min-height:100vh;background:var(--gray-bg)}
+#app.closed #main{margin-left:var(--sw-c)}
+#sidebar{position:fixed;left:0;top:0;height:100vh;width:var(--sw);background:var(--dark);display:flex;flex-direction:column;z-index:100;transition:width var(--tr);overflow:hidden}
+#sidebar.closed{width:var(--sw-c)}
+.sb-head{padding:24px 20px 20px;border-bottom:1px solid rgba(245,243,239,.1);display:flex;align-items:center;gap:12px;min-height:80px}
+.sb-logo-txt{font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:#f5f3ef;letter-spacing:.05em;white-space:nowrap}
+#sidebar.closed .sb-logo-txt{display:none}
+.sb-toggle{margin-left:auto;background:none;border:none;color:var(--gray-light);cursor:pointer;padding:6px 10px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:all var(--tr);flex-shrink:0;font-size:18px;line-height:1}
+.sb-toggle:hover{background:rgba(245,243,239,.08);color:var(--cream)}
+.sb-nav{flex:1;padding:14px 12px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;overflow-x:hidden}
+.sb-nav::-webkit-scrollbar{width:4px}
+.sb-nav::-webkit-scrollbar-thumb{background:rgba(245,243,239,.1);border-radius:2px}
+.nav-sec{font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--gray-mid);padding:14px 8px 6px;white-space:nowrap;transition:opacity var(--tr)}
+#sidebar.closed .nav-sec{opacity:0}
+.nav-btn{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:8px;cursor:pointer;transition:all var(--tr);color:var(--gray-light);font-family:'Raleway',sans-serif;font-size:13px;font-weight:500;white-space:nowrap;border:none;background:none;width:100%;text-align:left}
+.nav-btn:hover{background:rgba(245,243,239,.07);color:var(--cream)}
+.nav-btn.active{background:rgba(232,160,32,.15);color:var(--accent-light);border-left:2px solid var(--accent)}
+.nav-icon{font-size:16px;flex-shrink:0;width:18px;text-align:center}
+.nav-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-left:5px}
+.nav-lbl{transition:opacity var(--tr);overflow:hidden;text-overflow:ellipsis}
+#sidebar.closed .nav-lbl{opacity:0;pointer-events:none}
+.sb-foot{padding:14px 12px;border-top:1px solid rgba(245,243,239,.1)}
+.sb-badge{display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(232,160,32,.1);border-radius:8px}
+.badge-dot{width:8px;height:8px;background:var(--accent);border-radius:50%;flex-shrink:0;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.badge-txt{font-family:'Poppins',sans-serif;font-size:11px;color:var(--accent-light);white-space:nowrap;transition:opacity var(--tr)}
+#sidebar.closed .badge-txt{opacity:0}
+.page{padding:42px 48px;max-width:1280px;animation:fadeIn .35s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.page-eye{font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+.page-title{font-family:'Oswald',sans-serif;font-size:38px;font-weight:600;color:var(--dark);line-height:1.1;margin-bottom:8px}
+.page-sub{font-family:'Raleway',sans-serif;font-size:15px;color:var(--gray-mid);max-width:640px;line-height:1.6;margin-bottom:36px}
+.card{background:#fff;border-radius:12px;padding:24px;border:1px solid rgba(50,50,49,.08);transition:all var(--tr)}
+.card-dark{background:var(--dark);color:var(--cream)}
+.card-flat{background:rgba(50,50,49,.03);border:none}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.gauto{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:500}
+.t-fijo{background:rgba(50,50,49,.08);color:var(--dark)}
+.t-freelance{background:rgba(232,160,32,.15);color:#9a6400}
+.t-junior{background:rgba(115,115,115,.12);color:var(--gray-mid)}
+.t-senior{background:rgba(50,50,49,.12);color:var(--dark)}
+.t-activo{background:var(--success-bg);color:var(--success)}
+.t-pausado{background:var(--warn-bg);color:var(--warn)}
+.t-onboarding{background:var(--info-bg);color:var(--info)}
+.t-ecommerce{background:rgba(156,39,176,.12);color:#7b1fa2}
+.t-leadgen{background:rgba(0,121,107,.12);color:#00695c}
+.t-mango{background:rgba(232,160,32,.15);color:#9a6400}
+.t-cliente{background:rgba(50,50,49,.1);color:var(--dark)}
+.divider{height:1px;background:rgba(50,50,49,.08);margin:24px 0}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:8px;font-family:'Raleway',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all var(--tr);border:none}
+.btn-dark{background:var(--dark);color:var(--cream)}
+.btn-dark:hover{background:#000}
+.btn-ghost{background:transparent;color:var(--dark);border:1.5px solid rgba(50,50,49,.2)}
+.btn-ghost:hover{border-color:var(--dark)}
+.btn-danger{background:transparent;color:var(--danger);border:1.5px solid rgba(198,40,40,.3)}
+.btn-danger:hover{background:var(--danger-bg);border-color:var(--danger)}
+.btn-sm{padding:6px 12px;font-size:12px}
+.wf-step{display:flex;gap:18px;position:relative;padding-bottom:28px}
+.wf-step:last-child{padding-bottom:0}
+.wf-step:not(:last-child)::after{content:'';position:absolute;left:19px;top:40px;bottom:0;width:2px;background:rgba(50,50,49,.1)}
+.step-num{width:40px;height:40px;border-radius:50%;background:var(--dark);color:var(--cream);display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-size:15px;font-weight:600;flex-shrink:0}
+.step-body{flex:1;padding-top:6px}
+.step-title{font-family:'Oswald',sans-serif;font-size:17px;font-weight:500;color:var(--dark);margin-bottom:5px}
+.step-desc{font-family:'Raleway',sans-serif;font-size:13.5px;color:var(--gray-mid);line-height:1.6;margin-bottom:8px}
+.step-meta{display:flex;gap:6px;flex-wrap:wrap}
+.step-tag{font-family:'Poppins',sans-serif;font-size:11.5px;padding:3px 9px;border-radius:20px;background:rgba(50,50,49,.06);color:var(--dark)}
+.step-tag.time,.step-tag.out{color:var(--gray-mid)}
+.cl-item{display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid rgba(50,50,49,.06);cursor:pointer;user-select:none}
+.cl-item:last-child{border:none}
+.cl-box{width:20px;height:20px;border:2px solid var(--gray-light);border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all var(--tr);margin-top:1px;font-size:12px}
+.cl-item.done .cl-box{background:var(--dark);border-color:var(--dark);color:#fff}
+.cl-item.done .cl-text{text-decoration:line-through;color:var(--gray-mid)}
+.cl-text{font-family:'Raleway',sans-serif;font-size:13.5px;color:var(--dark);line-height:1.5;flex:1}
+.cl-cat{padding:2px 8px;border-radius:12px;font-size:10px;font-family:'Poppins',sans-serif;background:#f0f0f0;color:var(--dark);flex-shrink:0}
+.prog-wrap{height:6px;background:rgba(50,50,49,.08);border-radius:3px;overflow:hidden;margin-bottom:18px}
+.prog-bar{height:100%;border-radius:3px;transition:width .4s ease}
+.org-node{background:#fff;border-radius:12px;padding:18px;border:1px solid rgba(50,50,49,.1);transition:all var(--tr)}
+.org-node:hover{border-color:var(--accent);box-shadow:0 4px 20px rgba(232,160,32,.12)}
+.org-node.founder{background:var(--dark);color:var(--cream)}
+.org-av{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-size:15px;font-weight:600;margin-bottom:10px}
+.org-name{font-family:'Oswald',sans-serif;font-size:17px;font-weight:500;margin-bottom:3px}
+.org-role{font-family:'Poppins',sans-serif;font-size:11px;margin-bottom:10px;opacity:.7}
+.org-li{list-style:none;display:flex;flex-direction:column;gap:4px}
+.org-li li{font-family:'Raleway',sans-serif;font-size:13px;color:var(--gray-mid);display:flex;gap:7px;line-height:1.4}
+.org-node.founder .org-li li{color:var(--gray-light)}
+.org-li li::before{content:'→';font-size:11px;margin-top:2px;flex-shrink:0;color:var(--accent)}
+.role-pill{display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:30px;border:2px solid rgba(50,50,49,.12);background:#fff;cursor:pointer;transition:all .2s;font-family:'Raleway',sans-serif;font-size:13px;font-weight:600;color:var(--gray-mid)}
+.role-pill.active{border-color:var(--dark);background:rgba(50,50,49,.06);color:var(--dark)}
+.av-sm{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-size:11px;font-weight:700}
+.tabs{display:flex;gap:4px;background:rgba(50,50,49,.05);border-radius:8px;padding:4px;margin-bottom:20px}
+.tab{flex:1;padding:8px 0;border-radius:6px;border:none;font-family:'Poppins',sans-serif;font-size:12px;cursor:pointer;transition:all .2s;background:transparent;color:var(--gray-mid)}
+.tab.active{background:#fff;font-weight:600;color:var(--dark);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.subtabs{display:flex;gap:6px;border-bottom:2px solid rgba(50,50,49,.08);margin-bottom:24px}
+.subtab{padding:10px 18px;border:none;background:none;font-family:'Raleway',sans-serif;font-size:13px;cursor:pointer;color:var(--gray-mid);font-weight:500;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s}
+.subtab:hover{color:var(--dark)}
+.subtab.active{color:var(--dark);border-bottom-color:var(--accent);font-weight:600}
+.acc-row{background:#fff;border-radius:12px;padding:16px 22px;border:1px solid rgba(50,50,49,.08);display:flex;align-items:center;gap:18px;cursor:pointer;transition:all .2s;margin-bottom:8px}
+.acc-row:hover{border-color:var(--dark);transform:translateX(2px)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
+.modal{background:#fff;border-radius:16px;padding:32px;width:100%;max-width:560px;max-height:88vh;overflow-y:auto}
+.modal h2{font-family:'Oswald',sans-serif;font-size:24px;font-weight:600;margin-bottom:20px}
+.f-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.f-group{margin-bottom:14px}
+.f-group label{font-family:'Poppins',sans-serif;font-size:11px;color:var(--gray-mid);display:block;margin-bottom:5px;letter-spacing:.04em;text-transform:uppercase}
+.f-group input,.f-group select,.f-group textarea{width:100%;padding:10px 12px;border:1.5px solid rgba(50,50,49,.15);border-radius:8px;font-family:'Raleway',sans-serif;font-size:14px;color:var(--dark);background:#fff;outline:none;transition:border-color .2s}
+.f-group input:focus,.f-group select:focus,.f-group textarea:focus{border-color:var(--dark)}
+.f-group textarea{resize:vertical;min-height:60px}
+.kpi-card{background:#fff;border-radius:12px;padding:18px 20px;border:1px solid rgba(50,50,49,.08)}
+.kpi-lbl{font-family:'Poppins',sans-serif;font-size:11px;color:var(--gray-mid);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
+.kpi-val{font-family:'Oswald',sans-serif;font-size:28px;font-weight:600;color:var(--dark);line-height:1;margin-bottom:6px}
+.kpi-trend{font-family:'Poppins',sans-serif;font-size:11px;display:flex;align-items:center;gap:4px}
+.kpi-trend.up{color:var(--success)}
+.kpi-trend.down{color:var(--danger)}
+.kpi-trend.flat{color:var(--gray-mid)}
+.alert{padding:12px 16px;border-radius:10px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;border-left:3px solid}
+.alert.warn{background:var(--warn-bg);border-left-color:var(--warn);color:#5d2c00}
+.alert.danger{background:var(--danger-bg);border-left-color:var(--danger);color:#5e1010}
+.alert.info{background:var(--info-bg);border-left-color:var(--info);color:#0a3a6e}
+.alert-icon{font-size:16px;flex-shrink:0;line-height:1.4}
+.alert-txt{font-size:13px;line-height:1.5;flex:1}
+.alert-meta{font-family:'Poppins',sans-serif;font-size:10px;opacity:.7;margin-top:3px}
+.note-item{padding:14px 16px;background:rgba(50,50,49,.03);border-radius:10px;margin-bottom:10px}
+.note-meta{font-family:'Poppins',sans-serif;font-size:10px;color:var(--gray-mid);font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.note-text{font-size:13.5px;color:var(--dark);line-height:1.5}
+.doc-item{display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(232,160,32,.05);border-radius:10px;margin-bottom:8px;border-left:3px solid var(--accent)}
+.doc-icon{font-size:18px}
+.doc-name{flex:1;min-width:0}
+.doc-title{font-size:13px;font-weight:500;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.doc-meta{font-family:'Poppins',sans-serif;font-size:10px;color:var(--gray-mid);margin-top:2px}
+.doc-link{font-family:'Poppins',sans-serif;font-size:11px;color:var(--accent);text-decoration:none}
+.creative-card{background:#fff;border-radius:10px;padding:14px;border:1px solid rgba(50,50,49,.08)}
+.creative-thumb{width:100%;aspect-ratio:1.2;background:linear-gradient(135deg,#f5f3ef 0%,#e8e6e1 100%);border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;font-family:'Oswald',sans-serif;color:var(--gray-mid);font-size:11px}
+.creative-title{font-size:13px;font-weight:600;margin-bottom:6px}
+.creative-stats{display:flex;gap:10px;font-family:'Poppins',sans-serif;font-size:11px;color:var(--gray-mid)}
+.empty-state{text-align:center;padding:48px 24px;color:var(--gray-mid)}
+.empty-state-icon{font-size:36px;opacity:.4;margin-bottom:12px}
+.empty-state-txt{font-size:14px;line-height:1.6}
+.section-lbl{font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--gray-mid);margin-bottom:14px;font-weight:600}
+.kv-table{width:100%;font-size:13px}
+.kv-table tr{border-bottom:1px solid rgba(50,50,49,.06)}
+.kv-table tr:last-child{border:none}
+.kv-table td{padding:9px 0}
+.kv-table td:first-child{color:var(--gray-mid)}
+.kv-table td:last-child{text-align:right;color:var(--dark);font-weight:500}
+.editable{padding:2px 6px;border-radius:4px;border:1px dashed transparent;cursor:text;transition:border-color .2s}
+.editable:hover{border-color:rgba(50,50,49,.2)}
+.editable:focus{outline:none;border-color:var(--accent);background:rgba(232,160,32,.05)}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-thumb{background:var(--gray-light);border-radius:3px}
+@media(max-width:1024px){.g3,.g4{grid-template-columns:1fr 1fr}.page{padding:30px 28px}}
+@media(max-width:768px){.g2,.g3,.g4,.f-row{grid-template-columns:1fr}.page{padding:24px 20px}.page-title{font-size:28px}#main{margin-left:var(--sw-c)!important}}
+</style>
+</head>
+<body>
+
+<!-- LOADING SCREEN -->
+<div id="loadingScreen" style="position:fixed;inset:0;background:#f5f3ef;display:flex;align-items:center;justify-content:center;z-index:9999">
+  <div style="text-align:center">
+    <div style="font-family:'Oswald',sans-serif;font-size:32px;font-weight:700;color:#323231;letter-spacing:.05em;margin-bottom:14px">MANGO</div>
+    <div style="width:32px;height:32px;border:3px solid rgba(50,50,49,.12);border-top-color:#323231;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto"></div>
+    <div id="loadingMsg" style="margin-top:18px;font-family:'Poppins',sans-serif;font-size:12px;color:#737373">Cargando...</div>
+  </div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" style="display:none;position:fixed;inset:0;background:#f5f3ef;align-items:center;justify-content:center;z-index:9998;padding:20px">
+  <div style="max-width:400px;width:100%;text-align:center">
+    <div style="font-family:'Oswald',sans-serif;font-size:48px;font-weight:700;color:#323231;letter-spacing:.06em;margin-bottom:6px">MANGO</div>
+    <div style="font-family:'Poppins',sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#737373;margin-bottom:48px">Agency OS</div>
+
+    <div style="background:#fff;border:1px solid rgba(50,50,49,.08);border-radius:14px;padding:36px 28px">
+      <div style="font-family:'DM Serif Display',serif;font-style:italic;font-size:18px;color:#323231;line-height:1.45;margin-bottom:30px">"Los negocios que ya funcionan merecen crecer con orden, no con suerte."</div>
+      <button id="googleLoginBtn" style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:14px;border:1.5px solid rgba(50,50,49,.15);border-radius:10px;background:#fff;font-family:'Raleway',sans-serif;font-size:14px;font-weight:600;color:#323231;cursor:pointer;transition:all .2s">
+        <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
+        <span>Iniciar sesión con Google</span>
+      </button>
+      <div style="font-family:'Poppins',sans-serif;font-size:11px;color:#737373;margin-top:18px;line-height:1.5">Solo cuentas <strong>@comunidadmango.com</strong></div>
+      <div id="loginError" style="display:none;margin-top:14px;padding:10px 14px;background:#ffebee;border:1px solid #c62828;border-radius:8px;font-size:12px;color:#c62828;text-align:left;line-height:1.5"></div>
+    </div>
+    <div style="font-family:'Poppins',sans-serif;font-size:10px;color:#c6c5c5;margin-top:24px">comunidadmango.com · OS v2.0</div>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+  <aside id="sidebar">
+    <div class="sb-head">
+      <span class="sb-logo-txt">MANGO</span>
+      <button class="sb-toggle" id="sbToggle">&#8592;</button>
+    </div>
+    <nav class="sb-nav" id="sbNav"></nav>
+    <div class="sb-foot">
+      <div id="sbUser"></div>
+    </div>
+  </aside>
+  <main id="main"><div id="content"></div></main>
+</div>
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// EQUIPO — fijo, no cambia por cliente
+// ═══════════════════════════════════════════════════════════════════════════
+var TEAM=[
+  {id:'camila',name:'Camila',role:'Founder · Head of Strategy · Media Buyer Senior',initials:'CA',avatarBg:'#f5f3ef',avatarColor:'#323231',tipo:'fijo',nivel:'senior',isFounder:true,
+   resps:['Visión estratégica de todas las cuentas','Estrategia de pauta en Meta Ads','Media buying en cuentas principales','Aprobación final de campañas','Formación y dirección de Matheo'],
+   diarias:['Revisar métricas de campañas activas en Meta','Responder consultas estratégicas del equipo','Monitorear resultados de cuentas principales'],
+   semanales:['Reunión de estrategia con el equipo','Revisión y aprobación de creatividades','Ajuste de presupuestos y pujas en Meta','Sesión de feedback con Matheo (mentoring)'],
+   mensuales:['Definir estrategia de pauta del mes por cliente','Revisión de resultados y reporte interno','Planificación de nuevas cuentas / propuestas','Evaluación de performance del equipo'],
+   tools:['Meta Ads Manager','Google Sheets','Slack','ClickUp'],
+   nn:['Ninguna campaña se lanza sin su aprobación','Ella define la estrategia de pauta de cada cliente','Es la única que toma decisiones de presupuesto sin consultar']},
+  {id:'lucia',name:'Lucía',role:'Account Manager · Content Strategist',initials:'LU',avatarBg:'#e8a020',avatarColor:'#fff',tipo:'fijo',nivel:'senior',isFounder:false,
+   resps:['Gestión de la relación con los clientes','Briefing y onboarding de nuevas cuentas','Producción de contenido exclusivamente para Meta Ads','Brief de guiones para producción de contenido para pauta','Reportes mensuales al cliente'],
+   diarias:['Revisión de mensajes de clientes y respuestas','Coordinación diaria con Felicitas sobre producción','Actualización del estado de tareas en ClickUp'],
+   semanales:['Coordinación de producción de contenido para pauta','Revisión del pack de creatividades editadas por Felicitas','Check-in con Camila sobre estrategia de cuentas','Brief de guiones para próxima ronda de producción'],
+   mensuales:['Onboarding de nuevos clientes (si aplica)','Elaboración y envío de reportes mensuales','Planificación mensual de contenido para pauta con Camila','Presentación de resultados y plan del próximo mes'],
+   tools:['Google Docs','ClickUp','Slack','Meta Business Suite'],
+   nn:['Todo cliente tiene un punto de contacto claro: Lucía','El brief de contenido se basa siempre en la estrategia de pauta de Camila','Ningún contenido va al cliente sin revisión previa']},
+  {id:'felicitas',name:'Felicitas',role:'Diseñadora · Creadora de Contenido',initials:'FE',avatarBg:'#323231',avatarColor:'#f5f3ef',tipo:'freelance',nivel:'senior',isFounder:false,
+   resps:['Producción de piezas gráficas para pauta','Edición de video y reels','Creación de contenido junto a Lucía','Adaptaciones de formatos para Meta','Coherencia visual de las marcas'],
+   diarias:['Producción de piezas según brief del día','Revisión de feedback de Lucía sobre entregables'],
+   semanales:['Entrega de piezas semanales por cliente','Revisión del brief de guiones con Lucía','Adaptación de formatos (feed, story, reels)','Creación de contenido junto a Lucía'],
+   mensuales:['Revisión del banco de recursos visuales por marca','Propuesta de nuevos formatos o estéticas','Entrega de todas las piezas editadas del mes'],
+   tools:['Adobe CC / Canva','CapCut / Premiere','Google Drive','ClickUp'],
+   nn:['Toda pieza debe respetar el manual de marca del cliente','Los entregables se suben a Drive con nomenclatura acordada','Nada sale al cliente sin pasar por Lucía primero']},
+  {id:'matheo',name:'Matheo',role:'Media Buyer Jr. · Meta Ads',initials:'MA',avatarBg:'#c6c5c5',avatarColor:'#323231',tipo:'fijo',nivel:'junior',isFounder:false,
+   resps:['Ejecución de campañas bajo directivas de Camila','Carga y configuración de anuncios en Meta','Monitoreo diario de métricas','En formación para escalar a cuentas propias'],
+   diarias:['Monitoreo de métricas de campañas asignadas','Reporte de anomalías a Camila','Carga de anuncios según directivas'],
+   semanales:['Informe de performance semanal de sus cuentas','Sesión de mentoring con Camila','Actualización de estados en ClickUp'],
+   mensuales:['Colaboración en reporte mensual','Análisis de resultados del mes con Camila','Propuesta de mejoras en campañas asignadas'],
+   tools:['Meta Ads Manager','Google Sheets','ClickUp','Slack'],
+   nn:['Nunca modifica presupuestos sin autorización de Camila','Toda campaña nueva requiere revisión de Camila antes de publicar','Debe documentar todos los cambios que realiza']},
+  {id:'maria',name:'María',role:'Diseño Web · Freelance por proyecto',initials:'MR',avatarBg:'#f5f3ef',avatarColor:'#737373',tipo:'freelance',nivel:'senior',isFounder:false,
+   resps:['Diseño y desarrollo de landing pages','Actualizaciones de sitios web de clientes','Optimización de páginas para conversión','Trabajo por proyecto según demanda'],
+   diarias:['No tiene tareas diarias fijas (modalidad por proyecto)'],
+   semanales:['Entrega de avances según el proyecto activo','Revisión de feedback del cliente vía Lucía'],
+   mensuales:['Entrega final del proyecto acordado','Documentación del trabajo realizado en Drive'],
+   tools:['Figma','WordPress / Webflow','Google Drive','Slack'],
+   nn:['Los proyectos tienen un brief escrito y firmado antes de empezar','Los plazos se acuerdan por escrito en cada proyecto','Los archivos fuente se entregan siempre al cierre']},
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WORKFLOWS — recetas globales que se aplican a todos los clientes
+// ═══════════════════════════════════════════════════════════════════════════
+var WFS=[
+  {id:'onboarding',title:'Onboarding — Método MANGO',icon:'&#9672;',dur:'25–35 días',color:'#323231',desc:'Proceso completo desde firma hasta primera campaña live, siguiendo las 5 etapas del Método MANGO.',
+   pasos:[
+    {t:'Firma y kick-off',d:'Confirmación de contrato y reunión de inicio. Lucía envía formulario de onboarding y explica el proceso.',own:'Lucía',tiempo:'Día 1',out:'Contrato firmado · Formulario enviado'},
+    {t:'M — Mapa del Negocio',d:'Cliente completa formulario (ticket, margen, stock, estacionalidad, objetivos). Camila investiga sector, nicho y competencia. Antes de tocar la cuenta, se entiende el negocio.',own:'Lucía + Camila',tiempo:'Días 1–15',out:'Formulario completo · Investigación · Accesos a Meta'},
+    {t:'A — Arquitectura Estratégica',d:'Camila diseña arquitectura de campañas: estructura, objetivos, segmentaciones, presupuestos y lógica de embudo. Matheo configura técnicamente la cuenta.',own:'Camila + Matheo',tiempo:'Días 10–20',out:'Estrategia definida · Cuenta configurada · Pixel verificado'},
+    {t:'Brief de guiones y producción',d:'Lucía elabora brief de guiones basado en estrategia. Se agenda grabación. Lucía y Felicitas graban (o cliente entrega su material). Felicitas edita.',own:'Lucía + Felicitas',tiempo:'Días 15–25',out:'Pack de creatividades editadas listas para pauta'},
+    {t:'Revisión y aprobación final',d:'Camila revisa arquitectura, creatividades y configuración técnica. Aprueba o pide correcciones antes de publicar.',own:'Camila',tiempo:'Días 23–27',out:'Aprobación final'},
+    {t:'N — Nutrición y Testeo',d:'Se activan primeras campañas. Cada test tiene hipótesis clara. Matheo monitorea y reporta anomalías a Camila.',own:'Camila + Matheo',tiempo:'Días 27–35',out:'Campañas live · Primeros datos'},
+    {t:'Check-in post lanzamiento',d:'Lucía llama al cliente a los 5-7 días para reportar primeros resultados y alinear expectativas.',own:'Lucía',tiempo:'Día 35',out:'Cliente informado'},
+   ]},
+  {id:'mensual',title:'Workflow Mensual',icon:'&#8635;',dur:'mes a mes',color:'#e8a020',desc:'Ciclo mensual repetible una vez que el cliente está en fase G: brief → producción → activación → optimización → reporte.',
+   pasos:[
+    {t:'Planning del mes',d:'Camila analiza mes anterior y define estrategia: presupuestos, audiencias, directiva creativa, tests del mes.',own:'Camila',tiempo:'Días 1-2',out:'Plan estratégico del mes'},
+    {t:'Brief de guiones',d:'Lucía recibe la directiva de Camila y elabora brief detallado de contenido para producción.',own:'Lucía',tiempo:'Día 3',out:'Brief de guiones aprobado'},
+    {t:'Producción de creatividades',d:'Jornada de grabación (si Mango produce) o recepción y QA del material del cliente. Felicitas edita y adapta a formatos Meta.',own:'Lucía + Felicitas',tiempo:'Días 4-8',out:'Pack de creatividades editado'},
+    {t:'Aprobación y carga en Meta',d:'Camila revisa el pack. Matheo carga en Meta Ads Manager según la estructura del mes.',own:'Camila + Matheo',tiempo:'Días 9-10',out:'Campañas activas con creativos del mes'},
+    {t:'Monitoreo y optimización',d:'Matheo reporta métricas diarias. Camila toma decisiones de escalado, pausa o reformulación.',own:'Matheo + Camila',tiempo:'Durante el mes',out:'Optimizaciones documentadas'},
+   ]},
+  {id:'activacion',title:'Activación de Campaña',icon:'&#9658;',dur:'2–3 días',color:'#737373',desc:'Carga, QA y publicación de campaña. Cada vez que hay creatividades nuevas o ajustes estratégicos.',
+   pasos:[
+    {t:'Brief de campaña',d:'Camila define o actualiza objetivo, presupuesto, segmentación y estructura.',own:'Camila',tiempo:'Día 1',out:'Brief completo'},
+    {t:'Carga en Meta Ads Manager',d:'Matheo carga anuncios bajo arquitectura definida. Sigue exactamente el brief.',own:'Matheo',tiempo:'Días 1–2',out:'Campaña configurada (borrador)'},
+    {t:'QA completo',d:'Camila revisa: targeting, pixel activo, URLs, UTMs, presupuestos, estado de aprobación de Meta.',own:'Camila',tiempo:'Día 2',out:'QA aprobado'},
+    {t:'Publicación y monitoreo',d:'Camila publica. Matheo monitorea primeras 24-48hs y reporta métricas iniciales.',own:'Camila + Matheo',tiempo:'Días 2–3',out:'Campaña activa · Primeras métricas'},
+   ]},
+  {id:'reporte',title:'Reporte Mensual',icon:'&#9677;',dur:'3–4 días',color:'#323231',desc:'Etapa O: análisis del mes, decisiones para el próximo y presentación al cliente.',
+   pasos:[
+    {t:'Recolección de datos',d:'Matheo y Camila exportan datos de Meta Ads Manager. Se consolida todo antes de analizar.',own:'Matheo + Camila',tiempo:'Día 1',out:'Data exportada'},
+    {t:'Análisis de pauta',d:'Camila analiza ROAS, CPM, CPC, CTR, conversiones. Identifica qué creativos ganaron y qué audiencias escalan.',own:'Camila',tiempo:'Días 1–2',out:'Análisis · Decisiones del próximo mes'},
+    {t:'Armado del reporte',d:'Lucía arma el reporte: resumen ejecutivo, métricas, comparación, top creatividades, aprendizajes, próximos pasos.',own:'Lucía',tiempo:'Días 2–3',out:'Reporte borrador'},
+    {t:'Revisión de Camila',d:'Camila agrega contexto estratégico: por qué se tomaron las decisiones y hacia dónde va la estrategia.',own:'Camila',tiempo:'Día 3',out:'Reporte aprobado'},
+    {t:'Presentación al cliente',d:'Lucía presenta el reporte. Es una conversación sobre el negocio. Se cierra con plan del mes siguiente.',own:'Lucía',tiempo:'Días 3–4',out:'Cliente informado · Plan confirmado'},
+   ]},
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEMPLATES de checklist — recetas globales
+// ═══════════════════════════════════════════════════════════════════════════
+var TPLS=[
+  {id:'onboarding',title:'Onboarding',icon:'&#9672;',owner:'Lucía',color:'#323231',
+   items:[
+    {text:'Contrato firmado y archivado en Drive',cat:'Admin'},
+    {text:'Acceso a Meta Business Suite otorgado',cat:'Técnico'},
+    {text:'Acceso a cuenta publicitaria de Meta',cat:'Técnico'},
+    {text:'Pixel de Meta instalado y verificado',cat:'Técnico'},
+    {text:'Dominio verificado en Meta',cat:'Técnico'},
+    {text:'Brief de cliente completado',cat:'Estrategia'},
+    {text:'Manual de marca recibido',cat:'Creatividad'},
+    {text:'Referencias visuales obtenidas',cat:'Creatividad'},
+    {text:'Calendario editorial del primer mes definido',cat:'Contenido'},
+    {text:'Estrategia de pauta del primer mes aprobada',cat:'Pauta'},
+    {text:'Carpeta del cliente creada en Google Drive',cat:'Admin'},
+    {text:'Cliente dado de alta en ClickUp',cat:'Admin'},
+    {text:'Canal de Slack del cliente creado',cat:'Admin'},
+    {text:'Primera reunión de seguimiento agendada',cat:'Relación'},
+   ]},
+  {id:'lanzamiento',title:'Lanzamiento de Campaña',icon:'&#9658;',owner:'Camila + Matheo',color:'#e8a020',
+   items:[
+    {text:'Objetivo de campaña definido y alineado al brief',cat:'Estrategia'},
+    {text:'Presupuesto aprobado por Camila',cat:'Estrategia'},
+    {text:'Audiencia configurada correctamente',cat:'Targeting'},
+    {text:'Audiencias custom y lookalike cargadas',cat:'Targeting'},
+    {text:'Pixel verificado y enviando eventos',cat:'Técnico'},
+    {text:'URLs de destino probadas',cat:'Técnico'},
+    {text:'UTMs configurados',cat:'Técnico'},
+    {text:'Creatividades aprobadas por Camila',cat:'Creatividad'},
+    {text:'Copies revisados y aprobados',cat:'Creatividad'},
+    {text:'Formatos correctos por placement',cat:'Creatividad'},
+    {text:'CTA alineado con objetivo',cat:'Creatividad'},
+    {text:'Vista previa revisada antes de publicar',cat:'QA'},
+    {text:'Campaña publicada y confirmada activa',cat:'Publicación'},
+   ]},
+  {id:'contenido',title:'Producción de Contenido',icon:'&#127909;',owner:'Lucía + Felicitas',color:'#e8a020',
+   items:[
+    {text:'Brief estratégico recibido de Camila',cat:'Brief'},
+    {text:'Brief de guiones elaborado por Lucía',cat:'Brief'},
+    {text:'Brief de guiones aprobado por Camila',cat:'Brief'},
+    {text:'Día de grabación agendado',cat:'Logística'},
+    {text:'Locación, looks y materiales confirmados',cat:'Logística'},
+    {text:'Material grabado en jornada',cat:'Grabación'},
+    {text:'Material crudo entregado a Felicitas',cat:'Grabación'},
+    {text:'Videos editados y adaptados a formatos Meta',cat:'Edición'},
+    {text:'Gráficas estáticas producidas',cat:'Edición'},
+    {text:'Pack aprobado por Lucía',cat:'Revisión'},
+    {text:'Pack aprobado por Camila',cat:'Revisión'},
+    {text:'Creatividades subidas a Drive',cat:'Entrega'},
+    {text:'Creatividades cargadas en Meta',cat:'Entrega'},
+   ]},
+  {id:'reporte',title:'Reporte Mensual',icon:'&#9677;',owner:'Lucía + Camila',color:'#737373',
+   items:[
+    {text:'Data de Meta exportada',cat:'Datos'},
+    {text:'Análisis de performance completado',cat:'Análisis'},
+    {text:'Top 3 creatividades identificadas',cat:'Análisis'},
+    {text:'Comparativa vs mes anterior',cat:'Análisis'},
+    {text:'Resumen ejecutivo redactado',cat:'Redacción'},
+    {text:'Próximos pasos definidos',cat:'Redacción'},
+    {text:'Reporte aprobado por Camila',cat:'Aprobación'},
+    {text:'Presentación al cliente realizada',cat:'Presentación'},
+   ]},
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CLIENTES — los 5 reales con datos por defecto razonables
+// Estructura preparada para conectar con Meta API en Fase 3
+// ═══════════════════════════════════════════════════════════════════════════
+var CLIENTES_DEFAULT=[
+  {
+    id:'cristal', nombre:'Cristal', rubro:'Gafas de sol',
+    tipoCuenta:'ecommerce', modalidadContenido:'mango_produce',
+    estado:'activo', fase:'G — Growth Rentable',
+    accountManager:'Lucía', mediaBuyer:'Camila',
+    presupuestoPauta:'USD —', presupuestoServicio:'USD —',
+    metaAdAccountId:'', fechaInicio:'', proximoVencimiento:'',
+    color:'#e1bee7', avatarColor:'#7b1fa2',
+    prioridades:['Definir prioridades del mes'],
+    notas:[],
+    docs:[],
+    directiva:{tono:'',colores:'',target:'',cta:'',mensajes:''},
+    // KPIs — placeholders hasta conectar con Meta
+    kpis:{spend:0,impressions:0,clicks:0,ctr:0,cpm:0,cpc:0,conversions:0,roas:0,purchases:0,leads:0,cpl:0,cpa:0,frequency:0},
+    kpisPrev:{spend:0,roas:0,cpa:0,cpl:0,frequency:0,ctr:0},
+    alertas:[],
+    topCreativos:[],
+    checklists:{}
+  },
+  {
+    id:'bs_odonto', nombre:'Bs Odontología', rubro:'Clínica · Alineadores',
+    tipoCuenta:'leadgen', modalidadContenido:'mango_produce',
+    estado:'activo', fase:'G — Growth Rentable',
+    accountManager:'Lucía', mediaBuyer:'Camila',
+    presupuestoPauta:'USD —', presupuestoServicio:'USD —',
+    metaAdAccountId:'', fechaInicio:'', proximoVencimiento:'',
+    color:'#b3e5fc', avatarColor:'#0277bd',
+    prioridades:['Definir prioridades del mes'],
+    notas:[],
+    docs:[],
+    directiva:{tono:'',colores:'',target:'',cta:'',mensajes:''},
+    kpis:{spend:0,impressions:0,clicks:0,ctr:0,cpm:0,cpc:0,conversions:0,roas:0,purchases:0,leads:0,cpl:0,cpa:0,frequency:0},
+    kpisPrev:{spend:0,roas:0,cpa:0,cpl:0,frequency:0,ctr:0},
+    alertas:[],
+    topCreativos:[],
+    checklists:{}
+  },
+  {
+    id:'casa_praga', nombre:'Casa Praga', rubro:'Sillas y mesas',
+    tipoCuenta:'leadgen', modalidadContenido:'mango_produce',
+    estado:'activo', fase:'G — Growth Rentable',
+    accountManager:'Lucía', mediaBuyer:'Camila',
+    presupuestoPauta:'USD —', presupuestoServicio:'USD —',
+    metaAdAccountId:'', fechaInicio:'', proximoVencimiento:'',
+    color:'#d7ccc8', avatarColor:'#5d4037',
+    prioridades:['Definir prioridades del mes'],
+    notas:[],
+    docs:[],
+    directiva:{tono:'',colores:'',target:'',cta:'',mensajes:''},
+    kpis:{spend:0,impressions:0,clicks:0,ctr:0,cpm:0,cpc:0,conversions:0,roas:0,purchases:0,leads:0,cpl:0,cpa:0,frequency:0},
+    kpisPrev:{spend:0,roas:0,cpa:0,cpl:0,frequency:0,ctr:0},
+    alertas:[],
+    topCreativos:[],
+    checklists:{}
+  },
+  {
+    id:'th', nombre:'TH', rubro:'Pisos y revestimientos',
+    tipoCuenta:'leadgen', modalidadContenido:'mango_produce',
+    estado:'activo', fase:'G — Growth Rentable',
+    accountManager:'Lucía', mediaBuyer:'Camila',
+    presupuestoPauta:'USD —', presupuestoServicio:'USD —',
+    metaAdAccountId:'', fechaInicio:'', proximoVencimiento:'',
+    color:'#a5d6a7', avatarColor:'#2e7d32',
+    prioridades:['Definir prioridades del mes'],
+    notas:[],
+    docs:[],
+    directiva:{tono:'',colores:'',target:'',cta:'',mensajes:''},
+    kpis:{spend:0,impressions:0,clicks:0,ctr:0,cpm:0,cpc:0,conversions:0,roas:0,purchases:0,leads:0,cpl:0,cpa:0,frequency:0},
+    kpisPrev:{spend:0,roas:0,cpa:0,cpl:0,frequency:0,ctr:0},
+    alertas:[],
+    topCreativos:[],
+    checklists:{}
+  },
+  {
+    id:'grupo_cuenca', nombre:'Grupo Cuenca', rubro:'Servicio técnico (aires, heladeras)',
+    tipoCuenta:'leadgen', modalidadContenido:'mango_produce',
+    estado:'activo', fase:'G — Growth Rentable',
+    accountManager:'Lucía', mediaBuyer:'Camila',
+    presupuestoPauta:'USD —', presupuestoServicio:'USD —',
+    metaAdAccountId:'', fechaInicio:'', proximoVencimiento:'',
+    color:'#ffcc80', avatarColor:'#e65100',
+    prioridades:['Definir prioridades del mes'],
+    notas:[],
+    docs:[],
+    directiva:{tono:'',colores:'',target:'',cta:'',mensajes:''},
+    kpis:{spend:0,impressions:0,clicks:0,ctr:0,cpm:0,cpc:0,conversions:0,roas:0,purchases:0,leads:0,cpl:0,cpa:0,frequency:0},
+    kpisPrev:{spend:0,roas:0,cpa:0,cpl:0,frequency:0,ctr:0},
+    alertas:[],
+    topCreativos:[],
+    checklists:{}
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MANGO INFO — identidad de marca y método (editable)
+// ═══════════════════════════════════════════════════════════════════════════
+var MANGO_INFO_DEFAULT={
+  esencia:'Creemos que los negocios que ya funcionan merecen crecer con orden, no con suerte. Somos la respuesta a la impredecibilidad: traemos sistema donde había caos, claridad donde había gasto ciego.',
+  mision:'Ayudamos a dueños de negocios con producto validado a escalar sus ventas a través de Meta Ads — con metodología, transparencia y resultados que se pueden leer en un número.',
+  vision:'Ser la agencia de Meta Ads de referencia en Latinoamérica para negocios en etapa de escala — reconocida no por su tamaño, sino por la profundidad de sus resultados y la honestidad de su práctica.',
+  proposito:'Demostrar que una agencia de paid media puede operar con la misma ética que exigiría cualquier socio de negocios serio. Devolver la confianza en lo que puede hacer el paid media cuando está bien hecho.',
+  posicionamiento:'El equipo de paid media que actúa como socio estratégico, no como proveedor. La agencia que cuida el negocio del cliente como si fuera el suyo propio.',
+  promesa:'Con Mango, nunca vas a estar adivinando en qué se fue tu presupuesto.',
+  tono:'Directo, confiado, cercano (tutea), exigente, curioso. Oraciones cortas. Sin jerga vacía. Sin emojis forzados. Sin motivacional vacío.',
+  valores:[
+    {titulo:'Honestidad sin atenuantes',desc:'Si los números no dan, lo decimos antes de que el cliente nos lo pregunte. Si no podemos ayudar, lo decimos antes de cobrar.'},
+    {titulo:'Sistema sobre campaña',desc:'No creamos anuncios. Construimos estructuras que funcionan cuando alguien no las está mirando.'},
+    {titulo:'Datos, no intuición',desc:'Cada decisión tiene que poder explicarse con un número. "Me parece" no es una estrategia.'},
+    {titulo:'Involucración real',desc:'Nos metemos en el negocio del cliente, no solo en la cuenta publicitaria.'},
+    {titulo:'Largo plazo por encima del corto',desc:'Preferimos perder un cliente que no es para nosotros antes que retenerlo a costa de resultados mediocres.'}
+  ],
+  personalidad:[
+    {titulo:'Directo',desc:'Dice lo que piensa sin rodeos. Sin endulzar malas noticias.'},
+    {titulo:'Confiado',desc:'Sabe lo que hace. Muestra resultados, no promesas.'},
+    {titulo:'Cercano',desc:'Habla como persona real, no como corporación. Tutea.'},
+    {titulo:'Exigente',desc:'Estándares altos para sí mismo y para sus clientes.'},
+    {titulo:'Curioso',desc:'Se interesa genuinamente en los negocios de sus clientes. Escucha antes de proponer.'}
+  ],
+  clienteIdeal:'Dueño de negocio con producto o servicio validado, 4–10 años en el mercado, equipo propio. Invierte mínimo USD 1.000/mes en Meta Ads. Ya probó la frustración de agencias que prometen y desaparecen. Quiere control, predecibilidad y un equipo que le diga la verdad.',
+  noEs:[
+    'Una agencia de volumen',
+    'Un freelancer disfrazado de agencia',
+    'La opción más barata',
+    'Un servicio para emprendedores que arrancan',
+    'Una agencia que hace todo (community, diseño, SEO)',
+    'Una agencia que promete sin datos',
+    'Dependiente del cliente para pensar la estrategia'
+  ],
+  metodo:[
+    {letra:'M',titulo:'Mapa del Negocio',desc:'Antes de tocar la cuenta publicitaria, se entiende el negocio. Producto, margen, ticket, estacionalidad, competencia, cliente del cliente. Sin esto, la pauta es tiro al aire.'},
+    {letra:'A',titulo:'Arquitectura Estratégica',desc:'Diseño de la estructura de campañas, segmentaciones, presupuestos y embudo. La arquitectura define cómo el dinero del cliente va a moverse durante los próximos meses.'},
+    {letra:'N',titulo:'Nutrición y Testeo',desc:'Lanzamiento. Primeras campañas con hipótesis claras. No se testea por testear: cada variable tiene propósito. Aquí Meta aprende y nosotros recolectamos data.'},
+    {letra:'G',titulo:'Growth Rentable',desc:'Con datos del testeo, se escala lo que funciona y se apaga lo que no. Esta es la fase de la mayoría de los clientes activos.'},
+    {letra:'O',titulo:'Optimización Continua',desc:'Análisis de cierre del mes, decisiones para el siguiente, presentación al cliente. Cada mes es una iteración del método aplicada al negocio.'}
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUPABASE — cliente y constantes
+// ═══════════════════════════════════════════════════════════════════════════
+var SUPABASE_URL = 'https://aaayhmaksfxalqcllzh.supabase.co';
+var SUPABASE_KEY = 'sb_publishable_SbxXQtih65NaZJbmfujEGw_YYmb-X2D';
+var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ESTADO EN MEMORIA — se llena desde Supabase al cargar
+// ═══════════════════════════════════════════════════════════════════════════
+var CLIENTES = [];
+var TASKS = [];
+var MANGO_INFO = JSON.parse(JSON.stringify(MANGO_INFO_DEFAULT));
+// TEAM, WFS, TPLS quedan con sus defaults hasta que se carguen de Supabase
+
+// Persistencia de checked items (progreso de checklists) sigue siendo localStorage
+// porque cambia muy seguido y no necesita sync entre usuarios todavía.
+// Más adelante se puede migrar a tabla client_checks.
+function loadCheckedLocal(){
+  try{var raw=localStorage.getItem('mango_checked');return raw?JSON.parse(raw):{};}catch(e){return {};}
+}
+function saveCheckedLocal(){
+  try{localStorage.setItem('mango_checked',JSON.stringify(S.checked));}catch(e){}
+}
+function saveState(){ saveCheckedLocal(); }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CARGA INICIAL — trae todo de Supabase
+// ═══════════════════════════════════════════════════════════════════════════
+async function bootData(){
+  setLoadingMsg('Cargando equipo...');
+  var [teamR, wfR, wfPasosR, tplR, tplItemsR, clientesR, tasksR, mangoR, notasR, docsR] = await Promise.all([
+    sb.from('team').select('*').order('sort_order'),
+    sb.from('workflows').select('*').order('sort_order'),
+    sb.from('workflow_pasos').select('*').order('sort_order'),
+    sb.from('templates').select('*').order('sort_order'),
+    sb.from('template_items').select('*').order('sort_order'),
+    sb.from('clientes').select('*').order('nombre'),
+    sb.from('tareas').select('*').order('deadline'),
+    sb.from('mango_info').select('*').eq('id',1).maybeSingle(),
+    sb.from('notas').select('*').order('created_at',{ascending:false}),
+    sb.from('docs').select('*').order('created_at',{ascending:false}),
+  ]);
+
+  // TEAM
+  if(teamR.data && teamR.data.length){
+    TEAM = teamR.data.map(function(r){
+      return {
+        id:r.id, name:r.name, role:r.role, initials:r.initials,
+        avatarBg:r.avatar_bg, avatarColor:r.avatar_color,
+        tipo:r.tipo, nivel:r.nivel, isFounder:r.is_founder,
+        resps:r.resps||[], diarias:r.diarias||[], semanales:r.semanales||[],
+        mensuales:r.mensuales||[], tools:r.tools||[], nn:r.nn||[],
+      };
+    });
+  }
+
+  // WORKFLOWS
+  if(wfR.data){
+    var pasosByWf = {};
+    (wfPasosR.data||[]).forEach(function(p){
+      pasosByWf[p.workflow_id] = pasosByWf[p.workflow_id] || [];
+      pasosByWf[p.workflow_id].push({_id:p.id,t:p.titulo,d:p.descripcion,own:p.dueno,tiempo:p.tiempo,out:p.output});
+    });
+    WFS = wfR.data.map(function(w){
+      return {id:w.id,title:w.title,icon:w.icon,dur:w.dur,color:w.color,desc:w.descripcion,pasos:pasosByWf[w.id]||[]};
+    });
+  }
+
+  // TEMPLATES
+  if(tplR.data){
+    var itemsByTpl = {};
+    (tplItemsR.data||[]).forEach(function(it){
+      itemsByTpl[it.template_id] = itemsByTpl[it.template_id] || [];
+      itemsByTpl[it.template_id].push({_id:it.id,text:it.texto,cat:it.cat});
+    });
+    TPLS = tplR.data.map(function(t){
+      return {id:t.id,title:t.title,icon:t.icon,owner:t.owner,color:t.color,items:itemsByTpl[t.id]||[]};
+    });
+  }
+
+  // CLIENTES con notas y docs anidados
+  var notasByCliente = {};
+  (notasR.data||[]).forEach(function(n){
+    notasByCliente[n.cliente_id] = notasByCliente[n.cliente_id] || [];
+    notasByCliente[n.cliente_id].push({_id:n.id,fecha:n.fecha,autor:n.autor,texto:n.texto});
+  });
+  var docsByCliente = {};
+  (docsR.data||[]).forEach(function(d){
+    docsByCliente[d.cliente_id] = docsByCliente[d.cliente_id] || [];
+    docsByCliente[d.cliente_id].push({_id:d.id,nombre:d.nombre,tipo:d.tipo,link:d.link,descripcion:d.descripcion,fecha:d.fecha});
+  });
+
+  CLIENTES = (clientesR.data||[]).map(function(c){
+    return {
+      id:c.id, nombre:c.nombre, rubro:c.rubro,
+      tipoCuenta:c.tipo_cuenta, modalidadContenido:c.modalidad_contenido,
+      estado:c.estado, fase:c.fase,
+      accountManager:c.account_manager, mediaBuyer:c.media_buyer,
+      presupuestoPauta:c.presupuesto_pauta, presupuestoServicio:c.presupuesto_servicio,
+      metaAdAccountId:c.meta_ad_account_id,
+      fechaInicio:c.fecha_inicio, proximoVencimiento:c.proximo_vencimiento,
+      color:c.color, avatarColor:c.avatar_color,
+      prioridades:c.prioridades||[],
+      directiva:c.directiva||{},
+      kpis:c.kpis||{}, kpisPrev:c.kpis_prev||{},
+      alertas:c.alertas||[], topCreativos:c.top_creativos||[],
+      notas:notasByCliente[c.id]||[], docs:docsByCliente[c.id]||[],
+      checklists:{}
+    };
+  });
+
+  // TASKS
+  TASKS = (tasksR.data||[]).map(function(t){
+    return {
+      id:t.id, titulo:t.titulo, descripcion:t.descripcion,
+      clienteId:t.cliente_id, dueño:t.dueno,
+      deadline:t.deadline, estado:t.estado, prioridad:t.prioridad,
+      creadoPor:t.creado_por, createdAt:t.created_at, completedAt:t.completed_at,
+    };
+  });
+
+  // MANGO_INFO
+  if(mangoR.data){
+    MANGO_INFO = {
+      esencia:mangoR.data.esencia, mision:mangoR.data.mision, vision:mangoR.data.vision,
+      proposito:mangoR.data.proposito, posicionamiento:mangoR.data.posicionamiento,
+      promesa:mangoR.data.promesa, tono:mangoR.data.tono,
+      valores:mangoR.data.valores||[], personalidad:mangoR.data.personalidad||[],
+      clienteIdeal:mangoR.data.cliente_ideal, noEs:mangoR.data.no_es||[],
+      metodo:mangoR.data.metodo||[],
+    };
+  }
+}
+
+function setLoadingMsg(m){var el=document.getElementById('loadingMsg');if(el)el.textContent=m;}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AUTH — login/logout con Google
+// ═══════════════════════════════════════════════════════════════════════════
+var CURRENT_SESSION = null;
+
+async function loginWithGoogle(){
+  var loginErr = document.getElementById('loginError');
+  loginErr.style.display='none';
+  var {data, error} = await sb.auth.signInWithOAuth({
+    provider:'google',
+    options:{
+      redirectTo: window.location.origin + window.location.pathname,
+      queryParams:{ hd:'comunidadmango.com' }, // hint dominio
+    }
+  });
+  if(error){
+    loginErr.textContent = 'Error: ' + error.message;
+    loginErr.style.display='block';
+  }
+}
+
+async function logout(){
+  await sb.auth.signOut();
+  window.location.reload();
+}
+
+function showLogin(errMsg){
+  document.getElementById('loadingScreen').style.display='none';
+  document.getElementById('app').style.display='none';
+  var ls = document.getElementById('loginScreen');
+  ls.style.display='flex';
+  if(errMsg){
+    var el = document.getElementById('loginError');
+    el.textContent = errMsg;
+    el.style.display='block';
+  }
+}
+
+function showApp(){
+  document.getElementById('loadingScreen').style.display='none';
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').style.display='flex';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════
+var S={
+  page:'dashboard', sbOpen:true,
+  role:'camila', roleTab:'diarias',
+  wf:'onboarding', tpl:'onboarding',
+  filtro:'todos', modal:null,
+  editandoId:null,
+  clienteTab:'performance',
+  clienteWf:'onboarding',
+  clienteTpl:'onboarding',
+  taskFilter:'mias', // mias | todas | atrasadas | hoy | semana | hechas
+  currentUser:'Camila', // se sobreescribe con el nombre del usuario logueado en bootSession
+  checked:loadCheckedLocal(),
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+function fmt(n,d){if(n===null||n===undefined||isNaN(n))return '—';d=d||0;return Number(n).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function fmtUSD(n){if(n===null||n===undefined||isNaN(n)||n===0)return '—';return 'USD '+fmt(n,0);}
+function fmtPct(n,d){if(n===null||n===undefined||isNaN(n)||n===0)return '—';return fmt(n,d||2)+'%';}
+function fmtX(n,d){if(n===null||n===undefined||isNaN(n)||n===0)return '—';return fmt(n,d||2)+'×';}
+function trend(curr,prev,inverso){
+  if(!prev||prev===0||curr===0)return {dir:'flat',pct:0,sym:'—'};
+  var pct=((curr-prev)/prev)*100;
+  var dir;
+  if(Math.abs(pct)<2) dir='flat';
+  else if(inverso) dir=pct>0?'down':'up';
+  else dir=pct>0?'up':'down';
+  return {dir:dir,pct:Math.abs(pct),sym:dir==='up'?'↑':dir==='down'?'↓':'→'};
+}
+function findCliente(id){return CLIENTES.filter(function(c){return c.id===id;})[0];}
+function findTask(id){return TASKS.filter(function(t){return t.id===id;})[0];}
+function tipoCuentaLabel(t){return t==='ecommerce'?'E-commerce':'Lead gen';}
+function modalidadLabel(m){return m==='mango_produce'?'Mango produce contenido':'Cliente entrega contenido';}
+
+// ── Date helpers ────────────────────────────────────────────────────────────
+function todayISO(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function parseISO(s){if(!s)return null;var p=s.split('-');return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));}
+function daysUntil(iso){if(!iso)return null;var t=parseISO(todayISO());var d=parseISO(iso);return Math.round((d-t)/(1000*60*60*24));}
+function fmtDate(iso){
+  if(!iso) return '—';
+  var d=daysUntil(iso);
+  if(d===0) return 'Hoy';
+  if(d===1) return 'Mañana';
+  if(d===-1) return 'Ayer';
+  if(d>1 && d<=7) return 'En '+d+' días';
+  if(d<-1 && d>=-7) return 'Hace '+Math.abs(d)+' días';
+  var x=parseISO(iso);
+  return String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0');
+}
+function isOverdue(t){return t.estado!=='hecho' && t.deadline && daysUntil(t.deadline)<0;}
+function isToday(t){return t.deadline && daysUntil(t.deadline)===0;}
+function isThisWeek(t){if(!t.deadline)return false;var d=daysUntil(t.deadline);return d>=0 && d<=7;}
+
+// ── Task filtering ──────────────────────────────────────────────────────────
+function tasksOf(user){return TASKS.filter(function(t){return t.dueño===user;});}
+function tasksOfClient(cid){return TASKS.filter(function(t){return t.clienteId===cid;});}
+function sortByDeadline(arr){return arr.slice().sort(function(a,b){
+  if(!a.deadline && !b.deadline) return 0;
+  if(!a.deadline) return 1;
+  if(!b.deadline) return -1;
+  return a.deadline.localeCompare(b.deadline);
+});}
+
+// ── User avatar helper ──────────────────────────────────────────────────────
+function userAvatar(name,size){
+  var t=TEAM.filter(function(x){return x.name===name;})[0];
+  if(!t) return '';
+  var s=size||26;
+  return '<div style="width:'+s+'px;height:'+s+'px;border-radius:50%;background:'+t.avatarBg+';color:'+t.avatarColor+';display:flex;align-items:center;justify-content:center;font-family:\'Oswald\',sans-serif;font-size:'+(s*0.4)+'px;font-weight:700;flex-shrink:0">'+t.initials+'</div>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════════════════════════════════
+function nav(p){S.page=p;S.clienteTab='performance';render();window.scrollTo(0,0);}
+
+function buildNavItems(){
+  var atrasadas=TASKS.filter(function(t){return t.dueño===S.currentUser && isOverdue(t);}).length;
+  var hoy=TASKS.filter(function(t){return t.dueño===S.currentUser && isToday(t) && t.estado!=='hecho';}).length;
+  var miDiaBadge='';
+  if(atrasadas>0) miDiaBadge=' <span style="background:#c62828;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:600;margin-left:4px">'+atrasadas+'</span>';
+  else if(hoy>0) miDiaBadge=' <span style="background:#e8a020;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:600;margin-left:4px">'+hoy+'</span>';
+  var items=[
+    {id:'dashboard',icon:'&#11041;',label:'Dashboard'},
+    {id:'mi_dia',icon:'&#9728;',label:'Mi día'+miDiaBadge},
+    {sec:'Operaciones'},
+    {id:'tareas',icon:'&#9776;',label:'Todas las tareas'},
+    {id:'workflows',icon:'&#8635;',label:'Workflows'},
+    {id:'templates',icon:'&#9638;',label:'Templates'},
+    {sec:'Clientes'},
+    {id:'cuentas',icon:'&#9677;',label:'Todas las cuentas'},
+  ];
+  CLIENTES.forEach(function(c){
+    items.push({id:'cliente_'+c.id,dot:c.color,label:c.nombre});
+  });
+  items.push({sec:'Equipo'});
+  items.push({id:'organigrama',icon:'&#9672;',label:'Organigrama'});
+  items.push({id:'roles',icon:'&#9678;',label:'Roles & Tareas'});
+  items.push({sec:'Mango'});
+  items.push({id:'mango_identidad',icon:'&#9670;',label:'Sobre Mango'});
+  items.push({id:'mango_metodo',icon:'&#9678;',label:'Método MANGO'});
+  return items;
+}
+
+function renderSidebar(){
+  var items=buildNavItems();
+  document.getElementById('sbNav').innerHTML=items.map(function(it){
+    if(it.sec)return '<div class="nav-sec">'+it.sec+'</div>';
+    var icon=it.icon?'<span class="nav-icon">'+it.icon+'</span>':'<span class="nav-dot" style="background:'+it.dot+'"></span>';
+    return '<button class="nav-btn'+(S.page===it.id?' active':'')+'" onclick="nav(\''+it.id+'\')">'+icon+'<span class="nav-lbl">'+it.label+'</span></button>';
+  }).join('');
+  // User logueado + logout
+  var current=(TEAM||[]).filter(function(t){return t.name===S.currentUser;})[0]||(TEAM||[])[0];
+  var email=(CURRENT_SESSION && CURRENT_SESSION.user && CURRENT_SESSION.user.email) || '';
+  document.getElementById('sbUser').innerHTML=
+    '<div style="padding:8px 10px;background:rgba(245,243,239,.06);border-radius:8px;display:flex;align-items:center;gap:10px">'
+    +(current?userAvatar(current.name,28):'<div style="width:28px;height:28px;border-radius:50%;background:#e8a020;color:#fff;display:flex;align-items:center;justify-content:center;font-family:\'Oswald\',sans-serif;font-size:11px;font-weight:700">?</div>')
+    +'<div class="nav-lbl" style="flex:1;min-width:0"><div style="font-family:\'Raleway\',sans-serif;font-size:12px;color:var(--cream);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(current?current.name:'(sin perfil)')+'</div>'
+    +'<div style="font-family:\'Poppins\',sans-serif;font-size:9px;color:var(--gray-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+email+'</div></div>'
+    +'<button onclick="logout()" title="Cerrar sesión" style="background:none;border:none;color:var(--gray-light);cursor:pointer;padding:4px 6px;font-size:14px;line-height:1">⏻</button>'
+    +'</div>';
+  var sb=document.getElementById('sidebar');
+  var app=document.getElementById('app');
+  var tog=document.getElementById('sbToggle');
+  if(S.sbOpen){sb.classList.remove('closed');app.classList.remove('closed');tog.innerHTML='&#8592;';}
+  else{sb.classList.add('closed');app.classList.add('closed');tog.innerHTML='&#8594;';}
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDER ROUTER
+// ═══════════════════════════════════════════════════════════════════════════
+function render(){
+  renderSidebar();
+  var html='';
+  if(S.page==='dashboard') html=pgDashboard();
+  else if(S.page==='mi_dia') html=pgMiDia();
+  else if(S.page==='tareas') html=pgTareas();
+  else if(S.page==='workflows') html=pgWF();
+  else if(S.page==='templates') html=pgTpl();
+  else if(S.page==='organigrama') html=pgOrg();
+  else if(S.page==='roles') html=pgRoles();
+  else if(S.page==='cuentas') html=pgCuentas();
+  else if(S.page==='mango_identidad') html=pgMangoIdentidad();
+  else if(S.page==='mango_metodo') html=pgMangoMetodo();
+  else if(S.page.indexOf('cliente_')===0){
+    var id=S.page.replace('cliente_','');
+    var c=findCliente(id);
+    html=c?pgCliente(c):'<div class="page"><div class="empty-state"><div class="empty-state-icon">&#9888;</div><div class="empty-state-txt">Cliente no encontrado.</div></div></div>';
+  }
+  document.getElementById('content').innerHTML=html+renderModal();
+  saveState();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGES
+// ═══════════════════════════════════════════════════════════════════════════
+function pgDashboard(){
+  var activos=CLIENTES.filter(function(c){return c.estado==='activo';}).length;
+  var onb=CLIENTES.filter(function(c){return c.estado==='onboarding';}).length;
+  var pausados=CLIENTES.filter(function(c){return c.estado==='pausado';}).length;
+  var pendientes=TASKS.filter(function(t){return t.estado!=='hecho';}).length;
+  var atrasadas=TASKS.filter(isOverdue).length;
+  var hoy=TASKS.filter(function(t){return isToday(t) && t.estado!=='hecho';}).length;
+  var stats=[
+    {v:CLIENTES.length,l:'Clientes',s:activos+' activos · '+onb+' onboarding · '+pausados+' pausados'},
+    {v:pendientes,l:'Tareas pendientes',s:'del equipo · todos los clientes'},
+    {v:hoy,l:'Vencen hoy',s:hoy===0?'Día tranquilo':'Atención del día'},
+    {v:atrasadas,l:'Atrasadas',s:atrasadas===0?'Todo al día':'Resolver primero'},
+  ];
+
+  return '<div class="page">'
+    +'<div class="page-eye">Comunidad Mango · OS Interno</div>'
+    +'<h1 class="page-title">Bienvenida.</h1>'
+    +'<p class="page-sub">Tu sistema de operaciones. Cada cliente, cada proceso y cada rol en un solo lugar. Basado en el Método MANGO.</p>'
+    +'<div class="g4" style="margin-bottom:36px">'
+    +stats.map(function(s){return '<div class="card" style="padding:18px 20px">'
+      +'<div style="font-family:\'Oswald\',sans-serif;font-size:32px;font-weight:700;color:var(--dark);line-height:1;margin-bottom:4px">'+s.v+'</div>'
+      +'<div style="font-family:\'Raleway\',sans-serif;font-size:13px;font-weight:600;margin-bottom:2px">'+s.l+'</div>'
+      +'<div style="font-family:\'Poppins\',sans-serif;font-size:11px;color:var(--gray-mid)">'+s.s+'</div></div>';}).join('')
+    +'</div>'
+    +'<div class="section-lbl">Tus clientes</div>'
+    +'<div class="gauto" style="margin-bottom:36px">'
+    +CLIENTES.map(function(c){return '<div class="card" style="cursor:pointer;padding:18px" onclick="nav(\'cliente_'+c.id+'\')">'
+      +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">'
+      +'<div style="width:42px;height:42px;border-radius:10px;background:'+c.color+';color:'+c.avatarColor+';display:flex;align-items:center;justify-content:center;font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700">'+c.nombre.substring(0,2).toUpperCase()+'</div>'
+      +'<div style="flex:1;min-width:0"><div style="font-family:\'Oswald\',sans-serif;font-size:15px;font-weight:600;color:var(--dark);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+c.nombre+'</div>'
+      +'<div style="font-family:\'Poppins\',sans-serif;font-size:11px;color:var(--gray-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+c.rubro+'</div></div></div>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="tag t-'+c.tipoCuenta+'">'+tipoCuentaLabel(c.tipoCuenta)+'</span><span class="tag t-'+c.estado+'">'+c.estado+'</span></div>'
+      +'<div style="font-family:\'Poppins\',sans-serif;font-size:11px;color:var(--gray-mid)">'+c.fase+'</div>'
+      +'</div>';}).join('')
+    +'<div class="card" style="cursor:pointer;padding:18px;border-style:dashed;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:140px;color:var(--gray-mid)" onclick="openModal(\'nueva_cuenta\')">'
+    +'<div style="font-size:24px;margin-bottom:6px">+</div>'
+    +'<div style="font-size:13px;font-weight:600">Agregar cliente</div></div>'
+    +'</div>'
+    +'<div class="card card-dark" style="padding:32px 36px"><div style="font-family:\'DM Serif Display\',serif;font-size:20px;font-style:italic;color:var(--accent-light);margin-bottom:14px;line-height:1.5">&ldquo;Los negocios que ya funcionan merecen crecer con orden,<br>no con suerte.&rdquo;</div>'
+    +'<div style="font-family:\'Poppins\',sans-serif;font-size:12px;color:var(--gray-mid)">— Comunidad Mango</div></div>'
+    +'</div>';
+}
+
+function orgNode(m){
+  var isF=m.isFounder;
+  return '<div class="org-node'+(isF?' founder':'')+'" style="cursor:pointer;border-left:'+(isF?'none':'3px solid '+(m.tipo==='freelance'?'var(--accent)':'var(--dark)'))+'" onclick="openModal(\'editar_miembro\',\''+m.id+'\')">'
+    +'<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px">'
+    +'<div class="org-av" style="background:'+m.avatarBg+';color:'+m.avatarColor+'">'+m.initials+'</div>'
+    +'<div style="flex:1"><div class="org-name" style="color:'+(isF?'var(--cream)':'var(--dark)')+'">'+m.name+'</div>'
+    +'<div class="org-role">'+m.role+'</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap"><span class="tag t-'+m.tipo+'">'+(m.tipo==='fijo'?'Posición fija':'Freelance')+'</span><span class="tag t-'+m.nivel+'">'+m.nivel+'</span></div>'
+    +'</div></div><ul class="org-li">'+(m.resps||[]).slice(0,3).map(function(r){return '<li>'+r+'</li>';}).join('')+'</ul></div>';
+}
+
+function pgOrg(){
+  // Si hay 5 miembros con la primera siendo founder, usa layout jerárquico clásico.
+  // Si no, layout en grilla simple.
+  var founder=TEAM.find(function(t){return t.isFounder;});
+  var others=TEAM.filter(function(t){return !t.isFounder;});
+  var hasClassicShape=founder && others.length===4;
+  var orgHtml='';
+  if(hasClassicShape){
+    orgHtml='<div style="display:flex;justify-content:center;margin-bottom:0"><div style="width:100%;max-width:600px">'+orgNode(founder)+'</div></div>'
+      +'<div style="display:flex;justify-content:center"><div style="width:2px;height:32px;background:rgba(50,50,49,.15)"></div></div>'
+      +'<div class="g2" style="margin-bottom:0">'+orgNode(others[0])+orgNode(others[2])+'</div>'
+      +'<div style="display:flex"><div style="flex:1;display:flex;justify-content:center"><div style="width:2px;height:32px;background:rgba(50,50,49,.15)"></div></div><div style="flex:1"></div></div>'
+      +'<div class="g2">'+orgNode(others[1])+orgNode(others[3])+'</div>';
+  }else{
+    orgHtml='<div class="gauto">'+TEAM.map(orgNode).join('')+'</div>';
+  }
+  return '<div class="page">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px"><div><div class="page-eye">Módulo · Equipo</div><h1 class="page-title">Organigrama</h1><p class="page-sub">Estructura del equipo. Click en un miembro para editarlo.</p></div>'
+    +'<button class="btn btn-dark btn-sm" onclick="openModal(\'nuevo_miembro\')">+ Nuevo miembro</button></div>'
+    +'<div class="section-lbl">Estructura jerárquica</div>'
+    +orgHtml
+    +'</div>';
+}
+
+function pgRoles(){
+  if(TEAM.length===0) return '<div class="page"><div class="empty-state"><div class="empty-state-icon">&#9678;</div><div class="empty-state-txt">Sin miembros en el equipo. Agregá uno desde Organigrama.</div></div></div>';
+  var m=TEAM.filter(function(t){return t.id===S.role;})[0]||TEAM[0];
+  var tareas=m[S.roleTab]||[];
+  var dotColor=m.avatarBg==='#f5f3ef'?'var(--dark)':m.avatarBg;
+  return '<div class="page">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px"><div><div class="page-eye">Módulo · Equipo</div><h1 class="page-title">Roles & Tareas</h1><p class="page-sub">Qué hace cada integrante, con qué frecuencia y sus no-negociables.</p></div></div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:28px">'
+    +TEAM.map(function(t){return '<button class="role-pill'+(S.role===t.id?' active':'')+'" onclick="S.role=\''+t.id+'\';render()">'
+      +'<div class="av-sm" style="background:'+t.avatarBg+';color:'+t.avatarColor+'">'+t.initials+'</div>'+t.name+'</button>';}).join('')
+    +'</div>'
+    +'<div class="g2" style="align-items:start">'
+    +'<div class="card">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">'
+    +'<div><div style="font-family:\'Oswald\',sans-serif;font-size:22px;font-weight:600;margin-bottom:3px">'+m.name+'</div>'
+    +'<div style="font-family:\'Poppins\',sans-serif;font-size:12px;color:var(--gray-mid)">'+m.role+'</div></div>'
+    +'<button class="btn btn-ghost btn-sm" onclick="openModal(\'editar_miembro\',\''+m.id+'\')">Editar</button>'
+    +'</div>'
+    +'<div class="tabs">'
+    +'<button class="tab'+(S.roleTab==='diarias'?' active':'')+'" onclick="S.roleTab=\'diarias\';render()">Diarias</button>'
+    +'<button class="tab'+(S.roleTab==='semanales'?' active':'')+'" onclick="S.roleTab=\'semanales\';render()">Semanales</button>'
+    +'<button class="tab'+(S.roleTab==='mensuales'?' active':'')+'" onclick="S.roleTab=\'mensuales\';render()">Mensuales</button>'
+    +'</div>'
+    +(tareas.length===0?'<div style="font-size:13px;color:var(--gray-mid);padding:12px 0">Sin tareas en esta frecuencia. Tocá "Editar" para agregar.</div>':
+      tareas.map(function(t,i){return '<div style="display:flex;gap:10px;padding:10px 0;'+(i<tareas.length-1?'border-bottom:1px solid rgba(50,50,49,.06)':'')+'">'
+      +'<div style="width:6px;height:6px;border-radius:50%;background:'+dotColor+';margin-top:7px;flex-shrink:0"></div>'
+      +'<div style="font-family:\'Raleway\',sans-serif;font-size:14px;color:var(--dark);line-height:1.5">'+t+'</div></div>';}).join(''))
+    +'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:14px">'
+    +'<div class="card"><div class="section-lbl" style="margin-bottom:12px">Responsabilidades</div>'
+    +((m.resps||[]).length===0?'<div style="font-size:13px;color:var(--gray-mid)">Sin definir.</div>':(m.resps||[]).map(function(r){return '<div style="display:flex;gap:8px;margin-bottom:6px;font-size:13px;line-height:1.5"><span style="color:var(--accent)">→</span><span>'+r+'</span></div>';}).join(''))
+    +'</div>'
+    +'<div class="card"><div class="section-lbl" style="margin-bottom:12px">Herramientas</div>'
+    +((m.tools||[]).length===0?'<div style="font-size:13px;color:var(--gray-mid)">Sin definir.</div>':'<div style="display:flex;flex-wrap:wrap;gap:8px">'+m.tools.map(function(h){return '<span style="padding:5px 12px;border-radius:6px;background:rgba(50,50,49,.06);font-family:\'Poppins\',sans-serif;font-size:12px">'+h+'</span>';}).join('')+'</div>')
+    +'</div>'
+    +'<div class="card card-dark"><div style="font-family:\'Oswald\',sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-light);margin-bottom:12px">No negociables</div>'
+    +((m.nn||[]).length===0?'<div style="font-size:13px;color:var(--gray-light)">Sin definir.</div>':m.nn.map(function(n){return '<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px">'
+      +'<span style="color:var(--accent);font-size:14px;flex-shrink:0;margin-top:1px">!</span>'
+      +'<div style="font-family:\'Raleway\',sans-serif;font-size:13px;color:var(--gray-light);line-height:1.5">'+n+'</div></div>';}).join(''))
+    +'</div></div></div></div>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WORKFLOWS — editables
+// ═══════════════════════════════════════════════════════════════════════════
+function pgWF(){
+  if(WFS.length===0){
+    return '<div class="page"><div class="page-eye">Operaciones</div><h1 class="page-title">Workflows</h1><p class="page-sub">Procesos del equipo. Cada workflow es una receta de pasos con dueño y output.</p>'
+      +'<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="btn btn-dark" onclick="openModal(\'nuevo_workflow\')">+ Nuevo workflow</button></div>'
+      +'<div class="empty-state"><div class="empty-state-icon">&#8635;</div><div class="empty-state-txt">Sin workflows todavía. Creá el primero.</div></div></div>';
+  }
+  if(!S.wf || !WFS.find(function(w){return w.id===S.wf;})) S.wf=WFS[0].id;
+  var wf=WFS.filter(function(w){return w.id===S.wf;})[0];
+  return '<div class="page">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px"><div><div class="page-eye">Operaciones</div><h1 class="page-title">Workflows</h1><p class="page-sub">Procesos del equipo. Click en un paso para editarlo.</p></div>'
+    +'<button class="btn btn-dark btn-sm" onclick="openModal(\'nuevo_workflow\')">+ Nuevo workflow</button></div>'
+    +'<div class="g4" style="margin-bottom:24px">'
+    +WFS.map(function(w){return '<div class="card" style="cursor:pointer;padding:14px 16px;border:'+(S.wf===w.id?'2px solid '+(w.color||'#323231'):'1px solid rgba(50,50,49,.08)')+';background:'+(S.wf===w.id?(w.color||'#323231')+'10':'#fff')+'" onclick="S.wf=\''+w.id+'\';render()">'
+      +'<div style="font-size:18px;margin-bottom:4px">'+(w.icon||'&#9672;')+'</div>'
+      +'<div style="font-family:\'Oswald\',sans-serif;font-size:13px;font-weight:500;margin-bottom:2px">'+w.title+'</div>'
+      +'<div style="font-family:\'Poppins\',sans-serif;font-size:10px;color:var(--gray-mid)">'+(w.dur||'')+'</div></div>';}).join('')
+    +'</div>'
+    +'<div class="card">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;gap:16px">'
+    +'<div><div style="font-family:\'Oswald\',sans-serif;font-size:24px;font-weight:600;margin-bottom:6px">'+wf.title+'</div>'
+    +'<div style="font-family:\'Raleway\',sans-serif;font-size:14px;color:var(--gray-mid);max-width:560px">'+(wf.desc||'')+'</div></div>'
+    +'<div style="display:flex;gap:8px;flex-shrink:0"><button class="btn btn-ghost btn-sm" onclick="openModal(\'editar_workflow\',\''+wf.id+'\')">Editar</button><button class="btn btn-dark btn-sm" onclick="openModal(\'nuevo_paso\',null,\''+wf.id+'\')">+ Paso</button></div>'
+    +'</div>'
+    +(wf.pasos||[]).map(function(p,i){return '<div class="wf-step" style="cursor:pointer" onclick="openModal(\'editar_paso\',\''+i+'\',\''+wf.id+'\')">'
+      +'<div class="step-num" style="background:'+(i===0?(wf.color||'#323231'):'var(--dark)')+'">'+(i+1)+'</div>'
+      +'<div class="step-body">'
+      +'<div class="step-title">'+p.t+'</div>'
+      +'<div class="step-desc">'+(p.d||'')+'</div>'
+      +'<div class="step-meta">'
+      +(p.own?'<span class="step-tag">&#128100; '+p.own+'</span>':'')
+      +(p.tiempo?'<span class="step-tag time">&#9201; '+p.tiempo+'</span>':'')
+      +(p.out?'<span class="step-tag out">&#10003; '+p.out+'</span>':'')
+      +'</div></div></div>';}).join('')
+    +((wf.pasos||[]).length===0?'<div style="text-align:center;padding:24px;color:var(--gray-mid);font-size:13px">Sin pasos. Tocá "+ Paso" para agregar.</div>':'')
+    +'</div></div>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEMPLATES — editables
+// ═══════════════════════════════════════════════════════════════════════════
+function pgTpl(){
+  if(TPLS.length===0){
+    return '<div class="page"><div class="page-eye">Operaciones</div><h1 class="page-title">Templates</h1><p class="page-sub">Templates de checklist. El progreso se maneja por cliente.</p>'
+      +'<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="btn btn-dark" onclick="openModal(\'nuevo_template\')">+ Nuevo template</button></div>'
+      +'<div class="empty-state"><div class="empty-state-icon">&#9638;</div><div class="empty-state-txt">Sin templates todavía. Creá el primero.</div></div></div>';
+  }
+  if(!S.tpl || !TPLS.find(function(t){return t.id===S.tpl;})) S.tpl=TPLS[0].id;
+  var tpl=TPLS.filter(function(t){return t.id===S.tpl;})[0];
+  return '<div class="page">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px"><div><div class="page-eye">Operaciones</div><h1 class="page-title">Templates</h1><p class="page-sub">Click en un ítem para editarlo. El progreso se maneja por cliente.</p></div>'
+    +'<button class="btn btn-dark btn-sm" onclick="openModal(\'nuevo_template\')">+ Nuevo template</button></div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px">'
+    +TPLS.map(function(t){return '<button style="padding:8px 16px;border-radius:30px;border:'+(S.tpl===t.id?'2px solid '+(t.color||'#323231'):'2px solid rgba(50,50,49,.12)')+';background:'+(S.tpl===t.id?(t.color||'#323231')+'12':'#fff')+';font-family:\'Raleway\',sans-serif;font-size:13px;font-weight:600;color:'+(S.tpl===t.id?(t.color||'#323231'):'var(--gray-mid)')+';cursor:pointer" onclick="S.tpl=\''+t.id+'\';render()">'+(t.icon||'&#9638;')+' '+t.title+'</button>';}).join('')
+    +'</div>'
+    +'<div class="card">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">'
+    +'<div><div style="font-family:\'Oswald\',sans-serif;font-size:22px;font-weight:600;margin-bottom:3px">'+tpl.title+'</div>'
+    +'<div style="font-family:\'Poppins\',sans-serif;font-size:12px;color:var(--gray-mid)">'+(tpl.owner||'')+' · '+(tpl.items||[]).length+' items</div></div>'
+    +'<div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" onclick="openModal(\'editar_template\',\''+tpl.id+'\')">Editar</button><button class="btn btn-dark btn-sm" onclick="openModal(\'nuevo_item_tpl\',null,\''+tpl.id+'\')">+ Ítem</button></div>'
+    +'</div>'
+    +(tpl.items||[]).map(function(item,i){
+      return '<div class="cl-item" style="cursor:pointer" onclick="openModal(\'editar_item_tpl\',\''+i+'\',\''+tpl.id+'\')">'
+        +'<div class="cl-box"></div>'
+        +'<span class="cl-text">'+item.text+'</span>'
+        +'<span class="cl-cat">'+(item.cat||'')+'</span></div>';}).join('')
+    +((tpl.items||[]).length===0?'<div style="text-align:center;padding:24px;color:var(--gray-mid);font-size:13px">Sin ítems. Tocá "+ Ítem" para agregar.</div>':'')
+    +'</div></div>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SOBRE MANGO — identidad de marca (editable)
+// ═══════════════════════════════════════════════════════════════════════════
+function pgMangoIdentidad(){
+  var m=MANGO_INFO;
+  return '<div class="page">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px"><div><div class="page-eye">Mango</div><h1 class="page-title">Sobre Mango</h1><p class="page-sub">La identidad de marca. Fuente de verdad para contenido, propuestas y comunicación.</p></div>'
+    +'<button class="btn btn-dark btn-sm" onclick="openModal(\'editar_mango_identidad\')">Editar</button></div>'
+
+    +'<div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,#323231 0%,#1a1a19 100%);color:#f5f3ef">'
+    +'<div style="font-family:\'Oswald\',sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-light);margin-bottom:10px">Esencia</div>'
+    +'<div style="font-family:\'DM Serif Display\',serif;font-style:italic;font-size:18px;line-height:1.5;color:var(--cream)">'+m.esencia+'</div></div>'
+
+    +'<div class="g2" style="margin-bottom:14px">'
+    +'<div class="card"><div class="section-lbl" style="margin-bottom:8px">Misión</div><div style="font-size:13.5px;line-height:1.6">'+m.mision+'</div></div>'
+    +'<div class="card"><div class="section-lbl" style="margin-bottom:8px">Visión</div><div style="font-size:13.5px;line-height:1.6">'+m.vision+'</div></div>'
+    +'</div>'
+
+    +'<div class="g2" style="margin-bottom:14px">'
+    +'<div class="card"><div class="section-lbl" style="margin-bottom:8px">Propósito</div><div style="font-size:13.5px;line-height:1.6">'+m.proposito+'</div></div>'
+    +'<div class="card"><div class="section-lbl" style="margin-bottom:8px">Posicionamiento</div><div style="font-size:13.5px;line-height:1.6">'+m.posicionamiento+'</div></div>'
+    +'</div>'
+
+    +'<div class="card" style="margin-bottom:14px;border-left:3px solid var(--accent)">'
+    +'<div class="section-lbl" style="margin-bottom:8px">Promesa de marca</div>'
+    +'<div style="font-family:\'DM Serif Display\',serif;font-style:italic;font-size:18px;line-height:1.5">"'+m.promesa+'"</div></div>'
+
+    +'<div class="card" style="margin-bottom:14px">'
+    +'<div class="section-lbl" style="margin-bottom:12px">Valores</div>'
+    +(m.valores||[]).map(function(v){return '<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(50,50,49,.06)">'
+      +'<div style="width:6px;height:6px;border-radius:50%;background:var(--accent);margin-top:8px;flex-shrink:0"></div>'
+      +'<div><div style="font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:600;margin-bottom:2px">'+v.titulo+'</div>'
+      +'<div style="font-size:13px;color:var(--gray-mid);line-height:1.55">'+v.desc+'</div></div></div>';}).join('')
+    +'</div>'
+
+    +'<div class="g2" style="margin-bottom:14px">'
+    +'<div class="card"><div class="section-lbl" style="margin-bottom:12px">Personalidad</div>'
+    +(m.personalidad||[]).map(function(p){return '<div style="margin-bottom:10px"><div style="font-family:\'Oswald\',sans-serif;font-size:13px;font-weight:600;margin-bottom:2px">'+p.titulo+'</div><div style="font-size:12.5px;color:var(--gray-mid);line-height:1.5">'+p.desc+'</div></div>';}).join('')
+    +'</div>'
+    +'<div class="card"><div class="section-lbl" style="margin-bottom:8px">Tono de voz</div><div style="font-size:13.5px;line-height:1.6">'+m.tono+'</div></div>'
+    +'</div>'
+
+    +'<div class="card" style="margin-bottom:14px"><div class="section-lbl" style="margin-bottom:8px">Cliente ideal</div><div style="font-size:13.5px;line-height:1.6">'+m.clienteIdeal+'</div></div>'
+
+    +'<div class="card card-dark"><div style="font-family:\'Oswald\',sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-light);margin-bottom:12px">Lo que Mango NO es</div>'
+    +(m.noEs||[]).map(function(n){return '<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:var(--accent)">×</span><span style="font-size:13px;color:var(--gray-light)">'+n+'</span></div>';}).join('')
+    +'</div>'
+
+    +'</div>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MÉTODO MANGO — las 5 etapas (editable)
+// ═══════════════════════════════════════════════════════════════════════════
+function pgMangoMetodo(){
+  var etapas=MANGO_INFO.metodo||[];
+  return '<div class="page">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px"><div><div class="page-eye">Mango</div><h1 class="page-title">Método MANGO</h1><p class="page-sub">Cinco etapas que organizan toda la operación con un cliente. Click en una etapa para editarla.</p></div></div>'
+
+    +'<div style="display:flex;gap:10px;margin-bottom:24px">'
+    +etapas.map(function(e){return '<div style="flex:1;background:#fff;border:1px solid rgba(50,50,49,.1);border-radius:8px;padding:14px 8px;text-align:center">'
+      +'<div style="font-family:\'Oswald\',sans-serif;font-size:36px;font-weight:700;line-height:1">'+e.letra+'</div>'
+      +'<div style="font-family:\'Poppins\',sans-serif;font-size:10px;color:var(--gray-mid);margin-top:4px;text-transform:uppercase;letter-spacing:.05em">'+e.titulo+'</div></div>';}).join('')
+    +'</div>'
+
+    +etapas.map(function(e,i){return '<div class="card" style="cursor:pointer;margin-bottom:10px;display:flex;gap:18px;align-items:flex-start" onclick="openModal(\'editar_mango_etapa\',\''+i+'\')">'
+      +'<div style="width:54px;height:54px;border-radius:12px;background:var(--dark);color:var(--cream);display:flex;align-items:center;justify-content:center;font-family:\'Oswald\',sans-serif;font-size:28px;font-weight:700;flex-shrink:0">'+e.letra+'</div>'
+      +'<div style="flex:1"><div style="font-family:\'Oswald\',sans-serif;font-size:18px;font-weight:600;margin-bottom:6px">'+e.titulo+'</div>'
+      +'<div style="font-size:13.5px;color:var(--gray-mid);line-height:1.6">'+e.desc+'</div></div></div>';}).join('')
+
+    +'</div>';
+}
+
+function pgCuentas(){
+  var lista=S.filtro==='todos'?CLIENTES:CLIENTES.filter(function(c){return c.estado===S.filtro;});
+  var activos=CLIENTES.filter(function(c){return c.estado==='activo';}).length;
+  var onb=CLIENTES.filter(function(c){return c.estado==='onboarding';}).length;
+  var pausados=CLIENTES.filter(function(c){return c.estado==='pausado';}).length;
+  return '<div class="page"><div class="page-eye">Módulo · Clientes</div><h1 class="page-title">Todas las cuentas</h1><p class="page-sub">Estado de cada cliente en un vistazo. Click en una para entrar.</p>'
+    +'<div class="g3" style="margin-bottom:28px">'
+    +'<div class="card" style="padding:20px 24px;background:var(--success-bg);border:none"><div style="font-family:\'Oswald\',sans-serif;font-size:36px;font-weight:700;color:var(--success);line-height:1">'+activos+'</div><div style="font-family:\'Raleway\',sans-serif;font-size:13px;color:var(--success);font-weight:600">Activas</div></div>'
+    +'<div class="card" style="padding:20px 24px;background:var(--info-bg);border:none"><div style="font-family:\'Oswald\',sans-serif;font-size:36px;font-weight:700;color:var(--info);line-height:1">'+onb+'</div><div style="font-family:\'Raleway\',sans-serif;font-size:13px;color:var(--info);font-weight:600">En onboarding</div></div>'
+    +'<div class="card" style="padding:20px 24px;background:var(--warn-bg);border:none"><div style="font-family:\'Oswald\',sans-serif;font-size:36px;font-weight:700;color:var(--warn);line-height:1">'+pausados+'</div><div style="font-family:\'Raleway\',sans-serif;font-size:13px;color:var(--warn);font-weight:600">Pausadas</div></div>'
+    +'</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +['todos','activo','onboarding','pausado'].map(function(f){return '<button onclick="S.filtro=\''+f+'\';render()" style="padding:6px 14px;border-radius:20px;border:'+(S.filtro===f?'2px solid var(--dark)':'2px solid rgba(50,50,49,.12)')+';background:'+(S.filtro===f?'var(--dark)':'#fff')+';font-family:\'Poppins\',sans-serif;font-size:12px;color:'+(S.filtro===f?'var(--cream)':'var(--gray-mid)')+';cursor:pointer;text-transform:capitalize">'+f+'</button>';}).join('')
+    +'</div>'
+    +'<button class="btn btn-dark" onclick="openModal(\'nueva_cuenta\')" style="font-size:13px">+ Nueva cuenta</button>'
+    +'</div>'
+    +'<div>'
+    +(lista.length===0?'<div class="empty-state"><div class="empty-state-icon">&#9677;</div><div class="empty-state-txt">No hay clientes con ese filtro.</div></div>':
+    lista.map(function(c){return '<div class="acc-row" onclick="nav(\'cliente_'+c.id+'\')">'
+      +'<div style="width:42px;height:42px;border-radius:10px;background:'+c.color+';color:'+c.avatarColor+';display:flex;align-items:center;justify-content:center;font-family:\'Oswald\',sans-serif;font-size:14px;font-weight:700;flex-shrink:0">'+c.nombre.substring(0,2).toUpperCase()+'</div>'
+      +'<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap"><span style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:500;color:var(--dark)">'+c.nombre+'</span><span class="tag t-'+c.estado+'">'+c.estado+'</span><span class="tag t-'+c.tipoCuenta+'">'+tipoCuentaLabel(c.tipoCuenta)+'</span></div>'
+      +'<div style="font-family:\'Poppins\',sans-serif;font-size:12px;color:var(--gray-mid)">'+c.rubro+' · '+c.fase+' · AM: '+c.accountManager+' · MB: '+c.mediaBuyer+'</div></div>'
+      +'<div style="text-align:right;flex-shrink:0"><div style="font-family:\'Oswald\',sans-serif;font-size:14px;color:var(--dark)">'+c.presupuestoPauta+'</div><div style="font-family:\'Poppins\',sans-serif;font-size:11px;color:var(--gray-mid)">pauta/mes</div></div>'
+      +'<div style="color:var(--gray-light);font-size:14px">→</div></div>';}).join(''))
+    +'</div>'
+    +'</div>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MI DÍA — vista personal del integrante actual
+// ═══════════════════════════════════════════════════════════════════════════
+function pgMiDia(){
+  var u=S.currentUser;
+  var mias=tasksOf(u);
+  var atrasadas=sortByDeadline(mias.filter(isOverdue));
+  var hoy=sortByDeadline(mias.filter(function(t){return isToday(t) && t.estado!=='hecho';}));
+  var semana=sortByDeadline(mias.filter(function(t){var d=daysUntil(t.deadline);return d>0 && d<=7 && t.estado!=='hecho';}));
+  var sinFecha=mias.filter(function(t){return !t.deadline && t.estado!=='hecho';});
+  var hechas=mias.filter(function(t){return t.estado==='hecho';}).length;
+
+  return '<div class="page">'
+    +'<div style="display:flex;align-items:center;gap:14px;margin-bottom:8px">'
+    +userAvatar(u,42)
+    +'<div><div class="page-eye">Mi día · '+u+'</div></div>'
+    +'</div>'
+    +'<h1 class="page-title" style="margin-bottom:6px">Lo que tengo hoy</h1>'
+    +'<p class="page-sub">'+(atrasadas.length>0?'<strong style="color:#c62828">'+atrasadas.length+' atrasadas</strong> · ':'')+hoy.length+' hoy · '+semana.length+' esta semana · '+hechas+' hechas</p>'
+    +'<div style="display:flex;justify-content:flex-end;margin-bottom:18px"><button class="btn btn-dark" onclick="openModal(\'nueva_tarea\')">+ Nueva tarea</button></div>'
+    +taskSection('Atrasadas',atrasadas,'danger')
+    +taskSection('Hoy',hoy,'warn')
+    +taskSection('Esta semana',semana,'info')
+    +taskSection('Sin fecha',sinFecha,'flat')
+    +(mias.length===0?'<div class="empty-state"><div class="empty-state-icon">&#9728;</div><div class="empty-state-txt">No tenés tareas asignadas todavía.<br>Tocá <strong>+ Nueva tarea</strong> para crear una.</div></div>':'')
+    +'</div>';
+}
+
+function taskSection(title,arr,tone){
+  if(arr.length===0) return '';
+  var color=tone==='danger'?'#c62828':tone==='warn'?'#e65100':tone==='info'?'#1565c0':'#737373';
+  return '<div style="margin-bottom:24px">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
+    +'<div class="section-lbl" style="margin-bottom:0;color:'+color+'">'+title+'</div>'
+    +'<div style="font-family:\'Poppins\',sans-serif;font-size:11px;color:var(--gray-mid)">'+arr.length+'</div>'
+    +'</div>'
+    +arr.map(taskRow).join('')
+    +'</div>';
+}
+
+function taskRow(t){
+  var c=t.clienteId?findCliente(t.clienteId):null;
+  var overdue=isOverdue(t);
+  var doneBtn=t.estado==='hecho';
+  var fechaColor=overdue?'#c62828':isToday(t)?'#e65100':'var(--gray-mid)';
+  return '<div style="background:#fff;border:1px solid rgba(50,50,49,.08);border-left:3px solid '+(overdue?'#c62828':isToday(t)?'#e65100':doneBtn?'#2e7d32':c?c.color:'#c6c5c5')+';border-radius:10px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:14px;'+(doneBtn?'opacity:.65;':'')+'">'
+    +'<div onclick="toggleTaskDone(\''+t.id+'\')" style="width:22px;height:22px;border:2px solid '+(doneBtn?'#2e7d32':'#c6c5c5')+';border-radius:6px;background:'+(doneBtn?'#2e7d32':'#fff')+';color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:12px">'+(doneBtn?'&#10003;':'')+'</div>'
+    +'<div style="flex:1;min-width:0;cursor:pointer" onclick="openModal(\'editar_tarea\',\''+t.id+'\')">'
+    +'<div style="font-size:14px;font-weight:600;color:var(--dark);margin-bottom:3px;'+(doneBtn?'text-decoration:line-through;color:var(--gray-mid)':'')+'">'+t.titulo+'</div>'
+    +'<div style="display:flex;gap:10px;align-items:center;font-family:\'Poppins\',sans-serif;font-size:11px;color:var(--gray-mid);flex-wrap:wrap">'
+    +(c?'<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:'+c.color+'"></span>'+c.nombre+'</span>':'<span>Mango interno</span>')
+    +(t.deadline?'<span style="color:'+fechaColor+';font-weight:600">'+fmtDate(t.deadline)+'</span>':'<span>sin fecha</span>')
+    +(t.prioridad==='alta'?'<span style="color:#c62828;font-weight:600">! alta</span>':'')
+    +'</div>'
+    +(t.descripcion?'<div style="font-size:12px;color:var(--gray-mid);margin-top:5px;line-height:1.45">'+t.descripcion+'</div>':'')
+    +'</div>'
+    +userAvatar(t.dueño,28)
+    +'</div>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TODAS LAS TAREAS — vista global con filtros
+// ═══════════════════════════════════════════════════════════════════════════
+function pgTareas(){
+  var f=S.taskFilter;
+  var lista=TASKS.slice();
+  if(f==='mias') lista=lista.filter(function(t){return t.dueño===S.currentUser;});
+  else if(f==='atrasadas') lista=lista.filter(isOverdue);
+  else if(f==='hoy') lista=lista.filter(function(t){return isToday(t) && t.estado!=='hecho';});
+  else if(f==='semana') lista=lista.filter(function(t){var d=daysUntil(t.deadline);return d!==null && d>=0 && d<=7 && t.estado!=='hecho';});
+  else if(f==='hechas') lista=lista.filter(function(t){return t.estado==='hecho';});
+  else if(f==='pendientes') lista=lista.filter(function(t){return t.estado!=='hecho';});
+  lista=sortByDeadline(lista);
+
+  var totalTodas=TASKS.length;
+  var totalMias=tasksOf(S.currentUser).length;
+  var totalAtrasadas=TASKS.filter(isOverdue).length;
+  var totalHoy=TASKS.filter(function(t){return isToday(t) && t.estado!=='hecho';}).length;
+
+  var filtros=[
+    {id:'mias',label:'Mías',count:totalMias},
+    {id:'pendientes',label:'Pendientes',count:TASKS.filter(function(t){return t.estado!=='hecho';}).length},
+    {id:'atrasadas',label:'Atrasadas',count:totalAtrasadas},
+    {id:'hoy',label:'Hoy',count:totalHoy},
+    {id:'semana',label:'Esta semana',count:TASKS.filter(function(t){var d=daysUntil(t.deadline);return d!==null && d>=0 && d<=7 && t.estado!=='hecho';}).length},
+    {id:'hechas',label:'Hechas',count:TASKS.filter(function(t){return t.estado==='hecho';}).length},
+    {id:'todas',label:'Todas',count:totalTodas},
+  ];
+
+  return '<div class="page"><div class="page-eye">Operaciones</div><h1 class="page-title">Todas las tareas</h1><p class="page-sub">Vista global del equipo. Filtrá por estado, dueño o cliente. Click en una tarea para editarla.</p>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+    +filtros.map(function(fil){return '<button onclick="S.taskFilter=\''+fil.id+'\';render()" style="padding:6px 14px;border-radius:20px;border:'+(f===fil.id?'2px solid var(--dark)':'2px solid rgba(50,50,49,.12)')+';background:'+(f===fil.id?'var(--dark)':'#fff')+';font-family:\'Poppins\',sans-serif;font-size:12px;color:'+(f===fil.id?'var(--cream)':'var(--gray-mid)')+';cursor:pointer">'+fil.label+' <span style="opacity:.7">'+fil.count+'</span></button>';}).join('')
+    +'</div>'
+    +'<button class="btn btn-dark" onclick="openModal(\'nueva_tarea\')" style="font-size:13px">+ Nueva tarea</button>'
+    +'</div>'
+    +(lista.length===0?'<div class="empty-state"><div class="empty-state-icon">&#9776;</div><div class="empty-state-txt">No hay tareas con ese filtro.</div></div>':lista.map(taskRow).join(''))
+    +'</div>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VISTA DE CLIENTE — el corazón del sistema
+// ═══════════════════════════════════════════════════════════════════════════
+function pgCliente(c){
+  var tabs=[
+    {id:'performance',label:'Performance'},
+    {id:'operativo',label:'Operativo'},
+    {id:'ficha',label:'Ficha'},
+    {id:'notas',label:'Notas y docs'},
+  ];
+  var body='';
+  if(S.clienteTab==='performance') body=clientePerformance(c);
+  else if(S.clienteTab==='operativo') body=clienteOperativo(c);
+  else if(S.clienteTab==='ficha') body=clienteFicha(c);
+  else if(S.clienteTab==='notas') body=clienteNotas(c);
+
+  return '<div class="page">'
+    +'<div style="display:flex;align-items:flex-start;gap:18px;margin-bottom:8px">'
+    +'<div style="width:54px;height:54px;border-radius:12px;background:'+c.color+';color:'+c.avatarColor+';display:flex;align-items:center;justify-content:center;font-family:\'Oswald\',sans-serif;font-size:18px;font-weight:700;flex-shrink:0">'+c.nombre.substring(0,2).toUpperCase()+'</div>'
+    +'<div style="flex:1"><div class="page-eye">Cliente</div>'
+    +'<h1 class="page-title" style="margin-bottom:4px">'+c.nombre+'</h1>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="tag t-'+c.estado+'">'+c.estado+'</span><span class="tag t-'+c.tipoCuenta+'">'+tipoCuentaLabel(c.tipoCuenta)+'</span><span class="tag t-'+(c.modalidadContenido==='mango_produce'?'mango':'cliente')+'">'+modalidadLabel(c.modalidadContenido)+'</span><span style="font-family:\'Poppins\',sans-serif;font-size:12px;color:var(--gray-mid)">'+c.rubro+' · '+c.fase+'</span></div></div>'
+    +'<button class="btn btn-ghost btn-sm" onclick="openModal(\'editar_cuenta\',\''+c.id+'\')">Editar</button>'
+    +'</div>'
+    +'<div class="subtabs" style="margin-top:24px">'
+    +tabs.map(function(t){return '<button class="subtab'+(S.clienteTab===t.id?' active':'')+'" onclick="S.clienteTab=\''+t.id+'\';render()">'+t.label+'</button>';}).join('')
+    +'</div>'
+    +body
+    +'</div>';
+}
+
+// ── PERFORMANCE TAB ─────────────────────────────────────────────────────────
+function clientePerformance(c){
+  var k=c.kpis, p=c.kpisPrev||{};
+  var isEcom=c.tipoCuenta==='ecommerce';
+  var hasMetaId=c.metaAdAccountId && c.metaAdAccountId.length>0;
+  var hasData=k.spend>0 || k.impressions>0;
+
+  var banner='';
+  if(!hasMetaId){
+    banner='<div class="alert info" style="margin-bottom:20px">'
+      +'<div class="alert-icon">&#9432;</div>'
+      +'<div class="alert-txt"><strong>Conexión con Meta pendiente.</strong> Cargá el ID de cuenta publicitaria en la pestaña Ficha. Mientras tanto, podés cargar los KPIs manualmente o esperar a la integración con Meta API (Fase 3).</div></div>';
+  }
+
+  var kpis=[
+    {l:'Inversión del mes',v:fmtUSD(k.spend),t:trend(k.spend,p.spend),inv:false},
+    isEcom
+      ? {l:'ROAS',v:fmtX(k.roas),t:trend(k.roas,p.roas),inv:false}
+      : {l:'CPL',v:fmtUSD(k.cpl),t:trend(k.cpl,p.cpl,true),inv:false},
+    {l:isEcom?'Compras':'Leads',v:fmt(isEcom?k.purchases:k.leads,0),t:{dir:'flat',sym:'—'},inv:false},
+    {l:'CTR',v:fmtPct(k.ctr,2),t:trend(k.ctr,p.ctr),inv:false},
+    {l:'CPM',v:fmtUSD(k.cpm),t:trend(k.cpm,0,true),inv:true},
+    {l:'Frecuencia',v:fmt(k.frequency,2),t:trend(k.frequency,p.frequency,true),inv:true},
+  ];
+
+  var kpiHtml='<div class="g3" style="margin-bottom:20px">'+kpis.map(function(kp){
+    var arrow=kp.t.dir==='up'?'↑':kp.t.dir==='down'?'↓':'→';
+    var pct=kp.t.pct?' '+fmt(kp.t.pct,1)+'%':'';
+    return '<div class="kpi-card">'
+      +'<div class="kpi-lbl">'+kp.l+'</div>'
+      +'<div class="kpi-val">'+kp.v+'</div>'
+      +'<div class="kpi-trend '+kp.t.dir+'">'+arrow+pct+' vs mes ant.</div></div>';
+  }).join('')+'</div>';
+
+  // Alertas
+  var alertasHtml='';
+  if(c.alertas && c.alertas.length){
+    alertasHtml='<div class="section-lbl">Alertas</div>'
+      +c.alertas.map(function(a){return '<div class="alert '+a.severidad+'">'
+        +'<div class="alert-icon">'+(a.severidad==='danger'?'&#9888;':a.severidad==='warn'?'&#9888;':'&#9432;')+'</div>'
+        +'<div class="alert-txt">'+a.mensaje+'<div class="alert-meta">'+(a.fecha||'')+'</div></div></div>';}).join('')
+      +'<div style="margin-bottom:24px"></div>';
+  }else{
+    alertasHtml='<div class="section-lbl">Alertas</div>'
+      +'<div class="card" style="padding:18px;text-align:center;color:var(--gray-mid);font-size:13px;margin-bottom:24px">Sin alertas. Las alertas automáticas se activan cuando se conecte con Meta API.</div>';
+  }
+
+  // Top creativos
+  var creativosHtml='<div class="section-lbl">Top creativos del mes</div>';
+  if(c.topCreativos && c.topCreativos.length){
+    creativosHtml+='<div class="g3" style="margin-bottom:24px">'+c.topCreativos.slice(0,3).map(function(cr){return '<div class="creative-card">'
+      +'<div class="creative-thumb">'+(cr.formato||'creative')+'</div>'
+      +'<div class="creative-title">'+cr.nombre+'</div>'
+      +'<div class="creative-stats"><span>CTR '+fmtPct(cr.ctr,1)+'</span><span>'+(isEcom?'ROAS '+fmtX(cr.roas):'CPL '+fmtUSD(cr.cpl))+'</span></div></div>';}).join('')+'</div>';
+  }else{
+    creativosHtml+='<div class="card" style="padding:24px;text-align:center;color:var(--gray-mid);font-size:13px;margin-bottom:24px">Sin creativos registrados todavía. Se cargarán automáticamente con la integración de Meta.</div>';
+  }
+
+  // Resumen rápido del cliente
+  var resumen='<div class="g2" style="margin-bottom:24px">'
+    +'<div class="card"><div class="section-lbl" style="margin-bottom:14px">Cuenta</div>'
+    +'<table class="kv-table"><tr><td>Tipo</td><td>'+tipoCuentaLabel(c.tipoCuenta)+'</td></tr>'
+    +'<tr><td>Modalidad</td><td>'+modalidadLabel(c.modalidadContenido)+'</td></tr>'
+    +'<tr><td>Fase MANGO</td><td>'+c.fase+'</td></tr>'
+    +'<tr><td>Presupuesto pauta</td><td>'+c.presupuestoPauta+'</td></tr>'
+    +'<tr><td>Account Manager</td><td>'+c.accountManager+'</td></tr>'
+    +'<tr><td>Media Buyer</td><td>'+c.mediaBuyer+'</td></tr>'
+    +'<tr><td>Meta Ad Account ID</td><td style="font-family:monospace;font-size:11px">'+(c.metaAdAccountId||'(no conectado)')+'</td></tr>'
+    +'</table></div>'
+    +'<div class="card"><div class="section-lbl" style="margin-bottom:14px">Prioridades del mes</div>'
+    +(c.prioridades && c.prioridades.length?c.prioridades.map(function(p){return '<div style="display:flex;gap:8px;margin-bottom:8px"><span style="color:var(--accent)">→</span><span style="font-size:13.5px;line-height:1.5">'+p+'</span></div>';}).join(''):'<div style="color:var(--gray-mid);font-size:13px">Sin prioridades cargadas. Editá el cliente para agregar.</div>')
+    +'</div></div>';
+
+  return banner+kpiHtml+alertasHtml+creativosHtml+resumen;
+}
+
+// ── OPERATIVO TAB — estado actual + checklists del cliente ────────────────
+function clienteOperativo(c){
+  var tpl=TPLS.filter(function(t){return t.id===S.clienteTpl;})[0];
+  var prefix='cl_'+c.id+'_'+S.clienteTpl+'_';
+  var done=tpl.items.filter(function(_,i){return S.checked[prefix+i];}).length;
+  var pct=Math.round(done/tpl.items.length*100);
+  var faseLetra=(c.fase||'').charAt(0);
+
+  // Estado actual
+  var estado='<div class="card" style="margin-bottom:20px">'
+    +'<div class="section-lbl" style="margin-bottom:14px">Estado actual</div>'
+    +'<div style="display:grid;grid-template-columns:auto 1fr auto;gap:18px;align-items:center">'
+    +'<div style="width:64px;height:64px;border-radius:14px;background:var(--dark);color:var(--cream);display:flex;align-items:center;justify-content:center;font-family:\'Oswald\',sans-serif;font-size:32px;font-weight:700">'+faseLetra+'</div>'
+    +'<div><div style="font-family:\'Oswald\',sans-serif;font-size:18px;font-weight:600;margin-bottom:4px">'+c.fase+'</div>'
+    +'<div style="font-family:\'Poppins\',sans-serif;font-size:12px;color:var(--gray-mid)">Estado: '+c.estado+' · '+modalidadLabel(c.modalidadContenido)+'</div></div>'
+    +'<div style="text-align:right"><div style="font-family:\'Poppins\',sans-serif;font-size:11px;color:var(--gray-mid);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Próximo vencimiento</div>'
+    +'<div style="font-family:\'Oswald\',sans-serif;font-size:16px;font-weight:600">'+(c.proximoVencimiento||'—')+'</div></div>'
+    +'</div></div>';
+
+  // Tareas del cliente
+  var taskCliente=tasksOfClient(c.id);
+  var tCount=taskCliente.length;
+  var tPend=taskCliente.filter(function(t){return t.estado!=='hecho';}).length;
+  var tAtr=taskCliente.filter(isOverdue).length;
+  var tareas='<div style="margin-bottom:24px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+    +'<div class="section-lbl" style="margin-bottom:0">Tareas del cliente</div>'
+    +'<button class="btn btn-dark btn-sm" onclick="openModal(\'nueva_tarea\',null,\''+c.id+'\')">+ Nueva tarea</button>'
+    +'</div>'
+    +(tCount>0
+      ?'<div style="font-family:\'Poppins\',sans-serif;font-size:11px;color:var(--gray-mid);margin-bottom:10px">'+tPend+' pendientes'+(tAtr>0?' · <strong style="color:#c62828">'+tAtr+' atrasadas</strong>':'')+' · '+tCount+' total</div>'+sortByDeadline(taskCliente).map(taskRow).join('')
+      :'<div class="card" style="padding:24px;text-align:center;color:var(--gray-mid);font-size:13px">Sin tareas para este cliente. Tocá <strong>+ Nueva tarea</strong> para asignar la primera.</div>')
+    +'</div>';
+
+  // Checklists del cliente
+  var checklists='<div class="section-lbl">Checklists del cliente</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'
+    +TPLS.map(function(t){return '<button style="padding:6px 12px;border-radius:20px;border:'+(S.clienteTpl===t.id?'2px solid '+t.color:'2px solid rgba(50,50,49,.12)')+';background:'+(S.clienteTpl===t.id?t.color+'12':'#fff')+';font-family:\'Raleway\',sans-serif;font-size:12px;font-weight:600;color:'+(S.clienteTpl===t.id?t.color:'var(--gray-mid)')+';cursor:pointer" onclick="S.clienteTpl=\''+t.id+'\';render()">'+t.icon+' '+t.title+'</button>';}).join('')
+    +'</div>'
+    +'<div class="card">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
+    +'<div><div style="font-family:\'Oswald\',sans-serif;font-size:17px;font-weight:600">'+tpl.title+'</div>'
+    +'<div style="font-family:\'Poppins\',sans-serif;font-size:11px;color:var(--gray-mid)">'+tpl.owner+'</div></div>'
+    +'<button onclick="resetCheckClient(\''+c.id+'\',\''+S.clienteTpl+'\')" class="btn btn-ghost btn-sm">Reset</button>'
+    +'</div>'
+    +'<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-family:\'Poppins\',sans-serif;font-size:12px;color:var(--gray-mid)">'+done+' de '+tpl.items.length+'</span><span style="font-family:\'Oswald\',sans-serif;font-size:14px">'+pct+'%</span></div>'
+    +'<div class="prog-wrap"><div class="prog-bar" style="width:'+pct+'%;background:'+tpl.color+'"></div></div>'
+    +tpl.items.map(function(item,i){
+      var k=prefix+i;
+      var isDone=!!S.checked[k];
+      return '<div class="cl-item'+(isDone?' done':'')+'" onclick="toggleCL(\''+k+'\')">'
+        +'<div class="cl-box">'+(isDone?'&#10003;':'')+'</div>'
+        +'<span class="cl-text">'+item.text+'</span>'
+        +'<span class="cl-cat">'+item.cat+'</span></div>';}).join('')
+    +'</div>';
+
+  return estado + tareas + checklists;
+}
+
+// ── FICHA TAB — info del cliente + directiva creativa ─────────────────────
+function clienteFicha(c){
+  var d=c.directiva||{};
+  return '<div class="g2" style="margin-bottom:18px;align-items:start">'
+    +'<div class="card"><div class="section-lbl" style="margin-bottom:14px">Información del cliente</div>'
+    +'<table class="kv-table">'
+    +'<tr><td>Nombre</td><td>'+c.nombre+'</td></tr>'
+    +'<tr><td>Rubro</td><td>'+c.rubro+'</td></tr>'
+    +'<tr><td>Tipo de cuenta</td><td>'+tipoCuentaLabel(c.tipoCuenta)+'</td></tr>'
+    +'<tr><td>Modalidad de contenido</td><td>'+modalidadLabel(c.modalidadContenido)+'</td></tr>'
+    +'<tr><td>Estado</td><td>'+c.estado+'</td></tr>'
+    +'<tr><td>Fase MANGO</td><td>'+c.fase+'</td></tr>'
+    +'<tr><td>Account Manager</td><td>'+c.accountManager+'</td></tr>'
+    +'<tr><td>Media Buyer</td><td>'+c.mediaBuyer+'</td></tr>'
+    +'<tr><td>Presupuesto pauta</td><td>'+c.presupuestoPauta+'</td></tr>'
+    +'<tr><td>Servicio (fee)</td><td>'+c.presupuestoServicio+'</td></tr>'
+    +'<tr><td>Fecha de inicio</td><td>'+(c.fechaInicio||'—')+'</td></tr>'
+    +'<tr><td>Próximo vencimiento</td><td>'+(c.proximoVencimiento||'—')+'</td></tr>'
+    +'<tr><td>Meta Ad Account ID</td><td style="font-family:monospace;font-size:11px">'+(c.metaAdAccountId||'(no cargado)')+'</td></tr>'
+    +'</table>'
+    +'<button class="btn btn-ghost btn-sm" style="margin-top:14px;width:100%;justify-content:center" onclick="openModal(\'editar_cuenta\',\''+c.id+'\')">Editar información</button>'
+    +'</div>'
+    +'<div class="card"><div class="section-lbl" style="margin-bottom:14px">Directiva creativa</div>'
+    +'<div style="font-size:13.5px;color:var(--dark);line-height:1.7">'
+    +(d.tono?'<p style="margin-bottom:8px"><strong>Tono:</strong> '+d.tono+'</p>':'')
+    +(d.colores?'<p style="margin-bottom:8px"><strong>Colores:</strong> '+d.colores+'</p>':'')
+    +(d.target?'<p style="margin-bottom:8px"><strong>Target:</strong> '+d.target+'</p>':'')
+    +(d.cta?'<p style="margin-bottom:8px"><strong>CTA principal:</strong> '+d.cta+'</p>':'')
+    +(d.mensajes?'<p style="margin-bottom:8px"><strong>Mensajes clave:</strong> '+d.mensajes+'</p>':'')
+    +'</div>'
+    +(!d.tono&&!d.colores&&!d.target&&!d.cta&&!d.mensajes?'<div style="color:var(--gray-mid);font-size:13px">Sin directiva cargada. Editá el cliente para definirla.</div>':'')
+    +'</div>'
+    +'</div>';
+}
+
+// ── NOTAS Y DOCS TAB ───────────────────────────────────────────────────────
+function clienteNotas(c){
+  return '<div class="g2" style="align-items:start;gap:24px">'
+    +'<div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
+    +'<div class="section-lbl" style="margin-bottom:0">Notas internas</div>'
+    +'<button class="btn btn-dark btn-sm" onclick="openModal(\'nueva_nota\',\''+c.id+'\')">+ Nueva nota</button>'
+    +'</div>'
+    +(c.notas && c.notas.length?
+      c.notas.slice().reverse().map(function(n,idx){
+        var realIdx=c.notas.length-1-idx;
+        return '<div class="note-item" style="position:relative">'
+          +'<div class="note-meta">'+n.fecha+' · '+(n.autor||'—')+'</div>'
+          +'<div class="note-text">'+n.texto+'</div>'
+          +'<button onclick="deleteNote(\''+c.id+'\','+realIdx+')" style="position:absolute;top:10px;right:10px;background:none;border:none;color:var(--gray-light);cursor:pointer;font-size:14px;line-height:1" title="Eliminar">&times;</button>'
+          +'</div>';
+      }).join('')
+      :'<div class="empty-state"><div class="empty-state-icon">&#9998;</div><div class="empty-state-txt">Sin notas todavía.<br>Usá las notas para registrar decisiones, particularidades del cliente y conversaciones importantes.</div></div>')
+    +'</div>'
+    +'<div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
+    +'<div class="section-lbl" style="margin-bottom:0">Documentos y links</div>'
+    +'<button class="btn btn-dark btn-sm" onclick="openModal(\'nuevo_doc\',\''+c.id+'\')">+ Nuevo</button>'
+    +'</div>'
+    +(c.docs && c.docs.length?
+      c.docs.map(function(d,idx){return '<div class="doc-item" style="position:relative">'
+        +'<div class="doc-icon">'+(d.tipo==='link'?'&#128279;':'&#128196;')+'</div>'
+        +'<div class="doc-name"><div class="doc-title">'+d.nombre+'</div>'
+        +'<div class="doc-meta">'+(d.descripcion||'—')+(d.fecha?' · '+d.fecha:'')+'</div>'
+        +(d.link?'<a href="'+d.link+'" target="_blank" class="doc-link">Abrir →</a>':'')
+        +'</div>'
+        +'<button onclick="deleteDoc(\''+c.id+'\','+idx+')" style="background:none;border:none;color:var(--gray-light);cursor:pointer;font-size:14px;line-height:1" title="Eliminar">&times;</button>'
+        +'</div>';}).join('')
+      :'<div class="empty-state"><div class="empty-state-icon">&#128196;</div><div class="empty-state-txt">Sin documentos cargados.<br>Agregá links a Drive, manuales de marca, propuestas, briefs.</div></div>')
+    +'</div>'
+    +'</div>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MODALES
+// ═══════════════════════════════════════════════════════════════════════════
+function openModal(tipo,id,extraId){S.modal=tipo;S.editandoId=id||null;S.modalExtra=extraId||null;render();}
+function closeModal(){S.modal=null;S.editandoId=null;S.modalExtra=null;render();}
+
+function renderModal(){
+  if(!S.modal) return '';
+  var html='';
+  if(S.modal==='nueva_cuenta') html=modalCuenta(null);
+  else if(S.modal==='editar_cuenta') html=modalCuenta(findCliente(S.editandoId));
+  else if(S.modal==='nueva_nota') html=modalNota(S.editandoId);
+  else if(S.modal==='nuevo_doc') html=modalDoc(S.editandoId);
+  else if(S.modal==='nueva_tarea') html=modalTarea(null,S.modalExtra);
+  else if(S.modal==='editar_tarea') html=modalTarea(findTask(S.editandoId),null);
+  else if(S.modal==='nuevo_miembro') html=modalMiembro(null);
+  else if(S.modal==='editar_miembro') html=modalMiembro(TEAM.find(function(t){return t.id===S.editandoId;}));
+  else if(S.modal==='nuevo_workflow') html=modalWorkflow(null);
+  else if(S.modal==='editar_workflow') html=modalWorkflow(WFS.find(function(w){return w.id===S.editandoId;}));
+  else if(S.modal==='nuevo_paso') html=modalPaso(null,S.modalExtra);
+  else if(S.modal==='editar_paso') html=modalPaso(parseInt(S.editandoId),S.modalExtra);
+  else if(S.modal==='nuevo_template') html=modalTemplate(null);
+  else if(S.modal==='editar_template') html=modalTemplate(TPLS.find(function(t){return t.id===S.editandoId;}));
+  else if(S.modal==='nuevo_item_tpl') html=modalItemTpl(null,S.modalExtra);
+  else if(S.modal==='editar_item_tpl') html=modalItemTpl(parseInt(S.editandoId),S.modalExtra);
+  else if(S.modal==='editar_mango_identidad') html=modalMangoIdentidad();
+  else if(S.modal==='editar_mango_etapa') html=modalMangoEtapa(parseInt(S.editandoId));
+  return '<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal">'+html+'</div></div>';
+}
+
+function modalTarea(t,clienteIdPrefill){
+  var isEdit=!!t;
+  var def=t||{titulo:'',descripcion:'',clienteId:clienteIdPrefill||'',dueño:S.currentUser,deadline:'',estado:'pendiente',prioridad:'media'};
+  return '<h2>'+(isEdit?'Editar tarea':'Nueva tarea')+'</h2>'
+    +'<div class="f-group"><label>Título</label><input id="ft_titulo" value="'+(def.titulo||'').replace(/"/g,'&quot;')+'" placeholder="Ej: Cargar campañas de Cristal"/></div>'
+    +'<div class="f-group"><label>Descripción (opcional)</label><textarea id="ft_desc" rows="2" placeholder="Detalles, contexto, links...">'+(def.descripcion||'')+'</textarea></div>'
+    +'<div class="f-row">'
+    +'<div class="f-group"><label>Cliente</label><select id="ft_cliente">'
+    +'<option value=""'+(!def.clienteId?' selected':'')+'>— Mango interno —</option>'
+    +CLIENTES.map(function(c){return '<option value="'+c.id+'"'+(def.clienteId===c.id?' selected':'')+'>'+c.nombre+'</option>';}).join('')
+    +'</select></div>'
+    +'<div class="f-group"><label>Dueño</label><select id="ft_dueno">'+TEAM.map(function(m){return '<option'+(def.dueño===m.name?' selected':'')+'>'+m.name+'</option>';}).join('')+'</select></div>'
+    +'</div>'
+    +'<div class="f-row">'
+    +'<div class="f-group"><label>Deadline</label><input id="ft_deadline" type="date" value="'+(def.deadline||'')+'"/></div>'
+    +'<div class="f-group"><label>Prioridad</label><select id="ft_prio"><option value="baja"'+(def.prioridad==='baja'?' selected':'')+'>Baja</option><option value="media"'+(def.prioridad==='media'?' selected':'')+'>Media</option><option value="alta"'+(def.prioridad==='alta'?' selected':'')+'>Alta</option></select></div>'
+    +'</div>'
+    +'<div class="f-group"><label>Estado</label><select id="ft_estado"><option value="pendiente"'+(def.estado==='pendiente'?' selected':'')+'>Pendiente</option><option value="en_curso"'+(def.estado==='en_curso'?' selected':'')+'>En curso</option><option value="hecho"'+(def.estado==='hecho'?' selected':'')+'>Hecho</option></select></div>'
+    +'<div style="display:flex;gap:10px;margin-top:18px">'
+    +'<button class="btn btn-dark" onclick="saveTask('+(isEdit?'\''+t.id+'\'':'null')+')" style="flex:1;justify-content:center">'+(isEdit?'Guardar':'Crear tarea')+'</button>'
+    +(isEdit?'<button class="btn btn-danger" onclick="deleteTask(\''+t.id+'\')">Eliminar</button>':'')
+    +'<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>'
+    +'</div>';
+}
+
+function modalCuenta(c){
+  var isEdit=!!c;
+  var def=c||{nombre:'',rubro:'',tipoCuenta:'leadgen',modalidadContenido:'mango_produce',estado:'activo',fase:'G — Growth Rentable',accountManager:'Lucía',mediaBuyer:'Camila',presupuestoPauta:'',presupuestoServicio:'',metaAdAccountId:'',fechaInicio:'',proximoVencimiento:'',directiva:{tono:'',colores:'',target:'',cta:'',mensajes:''}};
+  var d=def.directiva||{};
+  return '<h2>'+(isEdit?'Editar cliente':'Nueva cuenta')+'</h2>'
+    +'<div class="f-row"><div class="f-group"><label>Nombre</label><input id="fn" value="'+(def.nombre||'')+'" placeholder="Ej: Cliente X"/></div>'
+    +'<div class="f-group"><label>Rubro</label><input id="fr" value="'+(def.rubro||'')+'" placeholder="Ej: E-commerce de muebles"/></div></div>'
+    +'<div class="f-row"><div class="f-group"><label>Tipo de cuenta</label><select id="ftc"><option value="leadgen"'+(def.tipoCuenta==='leadgen'?' selected':'')+'>Lead gen</option><option value="ecommerce"'+(def.tipoCuenta==='ecommerce'?' selected':'')+'>E-commerce</option></select></div>'
+    +'<div class="f-group"><label>Modalidad de contenido</label><select id="fmc"><option value="mango_produce"'+(def.modalidadContenido==='mango_produce'?' selected':'')+'>Mango produce</option><option value="cliente_entrega"'+(def.modalidadContenido==='cliente_entrega'?' selected':'')+'>Cliente entrega</option></select></div></div>'
+    +'<div class="f-row"><div class="f-group"><label>Estado</label><select id="fe"><option'+(def.estado==='activo'?' selected':'')+'>activo</option><option'+(def.estado==='onboarding'?' selected':'')+'>onboarding</option><option'+(def.estado==='pausado'?' selected':'')+'>pausado</option></select></div>'
+    +'<div class="f-group"><label>Fase MANGO</label><select id="ff">'
+    +['M — Mapa del Negocio','A — Arquitectura Estratégica','N — Nutrición y Testeo','G — Growth Rentable','O — Optimización Continua'].map(function(o){return '<option'+(def.fase===o?' selected':'')+'>'+o+'</option>';}).join('')
+    +'</select></div></div>'
+    +'<div class="f-row"><div class="f-group"><label>Account Manager</label><select id="fa">'+TEAM.map(function(t){return '<option'+(def.accountManager===t.name?' selected':'')+'>'+t.name+'</option>';}).join('')+'</select></div>'
+    +'<div class="f-group"><label>Media Buyer</label><select id="fmb">'+TEAM.map(function(t){return '<option'+(def.mediaBuyer===t.name?' selected':'')+'>'+t.name+'</option>';}).join('')+'</select></div></div>'
+    +'<div class="f-row"><div class="f-group"><label>Presupuesto pauta/mes</label><input id="fp" value="'+(def.presupuestoPauta||'')+'" placeholder="USD 1.000"/></div>'
+    +'<div class="f-group"><label>Servicio (fee)</label><input id="fps" value="'+(def.presupuestoServicio||'')+'" placeholder="USD 1.500"/></div></div>'
+    +'<div class="f-group"><label>Meta Ad Account ID (para conectar API después)</label><input id="fmi" value="'+(def.metaAdAccountId||'')+'" placeholder="act_123456789"/></div>'
+    +'<div class="f-row"><div class="f-group"><label>Fecha de inicio</label><input id="fdi" value="'+(def.fechaInicio||'')+'" placeholder="DD/MM/AAAA"/></div>'
+    +'<div class="f-group"><label>Próximo vencimiento</label><input id="fdv" value="'+(def.proximoVencimiento||'')+'" placeholder="DD/MM/AAAA"/></div></div>'
+    +'<div style="font-family:\'Oswald\',sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gray-mid);margin:16px 0 10px">Directiva creativa (opcional)</div>'
+    +'<div class="f-group"><label>Tono</label><input id="fdt" value="'+(d.tono||'')+'" placeholder="Premium pero accesible"/></div>'
+    +'<div class="f-group"><label>Colores</label><input id="fdc" value="'+(d.colores||'')+'" placeholder="Blanco, ocre, negro"/></div>'
+    +'<div class="f-group"><label>Target</label><input id="fdtg" value="'+(d.target||'')+'" placeholder="Hombres y mujeres 30-50"/></div>'
+    +'<div class="f-group"><label>CTA principal</label><input id="fdcta" value="'+(d.cta||'')+'" placeholder="Solicitar consulta"/></div>'
+    +'<div class="f-group"><label>Mensajes clave</label><textarea id="fdm" placeholder="Diseño + calidad + durabilidad">'+(d.mensajes||'')+'</textarea></div>'
+    +'<div style="display:flex;gap:10px;margin-top:18px">'
+    +'<button class="btn btn-dark" onclick="saveCliente('+(isEdit?'\''+c.id+'\'':'null')+')" style="flex:1;justify-content:center">'+(isEdit?'Guardar cambios':'Agregar cliente')+'</button>'
+    +(isEdit?'<button class="btn btn-danger" onclick="deleteCliente(\''+c.id+'\')">Eliminar</button>':'')
+    +'<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>'
+    +'</div>';
+}
+
+function modalNota(clienteId){
+  var hoy=new Date();
+  var fecha=hoy.getDate()+'/'+(hoy.getMonth()+1)+'/'+hoy.getFullYear();
+  return '<h2>Nueva nota</h2>'
+    +'<div class="f-group"><label>Autor</label><select id="fnota_autor">'+TEAM.map(function(t){return '<option'+(t.name==='Camila'?' selected':'')+'>'+t.name+'</option>';}).join('')+'</select></div>'
+    +'<div class="f-group"><label>Fecha</label><input id="fnota_fecha" value="'+fecha+'"/></div>'
+    +'<div class="f-group"><label>Nota</label><textarea id="fnota_texto" rows="5" placeholder="Decisión, observación, conversación importante..."></textarea></div>'
+    +'<div style="display:flex;gap:10px;margin-top:14px">'
+    +'<button class="btn btn-dark" onclick="saveNota(\''+clienteId+'\')" style="flex:1;justify-content:center">Guardar</button>'
+    +'<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>'
+    +'</div>';
+}
+
+function modalDoc(clienteId){
+  var hoy=new Date();
+  var fecha=hoy.getDate()+'/'+(hoy.getMonth()+1)+'/'+hoy.getFullYear();
+  return '<h2>Nuevo documento o link</h2>'
+    +'<div class="f-group"><label>Nombre</label><input id="fdoc_nombre" placeholder="Ej: Manual de marca"/></div>'
+    +'<div class="f-group"><label>Tipo</label><select id="fdoc_tipo"><option value="link">Link</option><option value="doc">Documento</option></select></div>'
+    +'<div class="f-group"><label>Link / ubicación (opcional)</label><input id="fdoc_link" placeholder="https://drive.google.com/..."/></div>'
+    +'<div class="f-group"><label>Descripción</label><input id="fdoc_desc" placeholder="Carpeta de Drive, link a Pinterest, etc."/></div>'
+    +'<div class="f-group"><label>Fecha</label><input id="fdoc_fecha" value="'+fecha+'"/></div>'
+    +'<div style="display:flex;gap:10px;margin-top:14px">'
+    +'<button class="btn btn-dark" onclick="saveDoc(\''+clienteId+'\')" style="flex:1;justify-content:center">Guardar</button>'
+    +'<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>'
+    +'</div>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CRUD
+// ═══════════════════════════════════════════════════════════════════════════
+// Helper para mostrar errores de Supabase de forma simple
+function sbError(prefix, error){
+  console.error(prefix, error);
+  alert(prefix + ': ' + (error.message || error));
+}
+
+async function saveCliente(id){
+  var data={
+    nombre:document.getElementById('fn').value.trim()||'Nueva Cuenta',
+    rubro:document.getElementById('fr').value.trim()||'—',
+    tipoCuenta:document.getElementById('ftc').value,
+    modalidadContenido:document.getElementById('fmc').value,
+    estado:document.getElementById('fe').value,
+    fase:document.getElementById('ff').value,
+    accountManager:document.getElementById('fa').value,
+    mediaBuyer:document.getElementById('fmb').value,
+    presupuestoPauta:document.getElementById('fp').value.trim()||'USD —',
+    presupuestoServicio:document.getElementById('fps').value.trim()||'USD —',
+    metaAdAccountId:document.getElementById('fmi').value.trim(),
+    fechaInicio:document.getElementById('fdi').value.trim(),
+    proximoVencimiento:document.getElementById('fdv').value.trim(),
+    directiva:{
+      tono:document.getElementById('fdt').value.trim(),
+      colores:document.getElementById('fdc').value.trim(),
+      target:document.getElementById('fdtg').value.trim(),
+      cta:document.getElementById('fdcta').value.trim(),
+      mensajes:document.getElementById('fdm').value.trim(),
+    },
+  };
+  // Mapear keys camelCase -> snake_case para Supabase
+  var dbRow = {
+    nombre:data.nombre, rubro:data.rubro, tipo_cuenta:data.tipoCuenta,
+    modalidad_contenido:data.modalidadContenido, estado:data.estado, fase:data.fase,
+    account_manager:data.accountManager, media_buyer:data.mediaBuyer,
+    presupuesto_pauta:data.presupuestoPauta, presupuesto_servicio:data.presupuestoServicio,
+    meta_ad_account_id:data.metaAdAccountId,
+    fecha_inicio:data.fechaInicio, proximo_vencimiento:data.proximoVencimiento,
+    directiva:data.directiva,
+  };
+  if(id){
+    var {error} = await sb.from('clientes').update(dbRow).eq('id', id);
+    if(error) return sbError('Error al actualizar cliente', error);
+    var c=findCliente(id);
+    if(c) Object.keys(data).forEach(function(k){c[k]=data[k];});
+  }else{
+    var newId=data.nombre.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')||('cliente_'+Date.now());
+    while(CLIENTES.some(function(c){return c.id===newId;})) newId+='_';
+    dbRow.id = newId;
+    dbRow.color='#e1bee7'; dbRow.avatar_color='#7b1fa2';
+    dbRow.prioridades=['Definir prioridades del mes'];
+    dbRow.kpis={spend:0,impressions:0,clicks:0,ctr:0,cpm:0,cpc:0,conversions:0,roas:0,purchases:0,leads:0,cpl:0,cpa:0,frequency:0};
+    dbRow.kpis_prev={spend:0,roas:0,cpa:0,cpl:0,frequency:0,ctr:0};
+    var {error} = await sb.from('clientes').insert(dbRow);
+    if(error) return sbError('Error al crear cliente', error);
+    var nuevo=Object.assign({
+      id:newId, color:'#e1bee7', avatarColor:'#7b1fa2',
+      prioridades:['Definir prioridades del mes'],
+      notas:[], docs:[],
+      kpis:dbRow.kpis, kpisPrev:dbRow.kpis_prev,
+      alertas:[], topCreativos:[], checklists:{},
+    }, data);
+    CLIENTES.push(nuevo);
+    S.page='cliente_'+newId;
+  }
+  closeModal();
+}
+
+async function deleteCliente(id){
+  if(!confirm('¿Eliminar este cliente? Se borran sus notas, docs y progreso de checklists. No se puede deshacer.'))return;
+  var {error} = await sb.from('clientes').delete().eq('id', id);
+  if(error) return sbError('Error al eliminar cliente', error);
+  CLIENTES=CLIENTES.filter(function(c){return c.id!==id;});
+  Object.keys(S.checked).forEach(function(k){if(k.indexOf('cl_'+id+'_')===0)delete S.checked[k];});
+  S.page='cuentas';
+  closeModal();
+}
+
+async function saveNota(clienteId){
+  var c=findCliente(clienteId);if(!c)return;
+  var texto=document.getElementById('fnota_texto').value.trim();
+  if(!texto){alert('Escribí una nota.');return;}
+  var fecha=document.getElementById('fnota_fecha').value.trim();
+  var autor=document.getElementById('fnota_autor').value;
+  var {data, error} = await sb.from('notas').insert({cliente_id:clienteId, fecha:fecha, autor:autor, texto:texto}).select().single();
+  if(error) return sbError('Error al guardar nota', error);
+  c.notas=c.notas||[];
+  c.notas.push({_id:data.id, fecha:fecha, autor:autor, texto:texto});
+  closeModal();
+}
+
+async function deleteNote(clienteId,idx){
+  if(!confirm('¿Eliminar esta nota?'))return;
+  var c=findCliente(clienteId);if(!c||!c.notas)return;
+  var nota=c.notas[idx];
+  if(nota && nota._id){
+    var {error} = await sb.from('notas').delete().eq('id', nota._id);
+    if(error) return sbError('Error al eliminar nota', error);
+  }
+  c.notas.splice(idx,1);
+  render();
+}
+
+async function saveDoc(clienteId){
+  var c=findCliente(clienteId);if(!c)return;
+  var nombre=document.getElementById('fdoc_nombre').value.trim();
+  if(!nombre){alert('Ingresá un nombre.');return;}
+  var doc={
+    cliente_id:clienteId, nombre:nombre,
+    tipo:document.getElementById('fdoc_tipo').value,
+    link:document.getElementById('fdoc_link').value.trim(),
+    descripcion:document.getElementById('fdoc_desc').value.trim(),
+    fecha:document.getElementById('fdoc_fecha').value.trim(),
+  };
+  var {data, error} = await sb.from('docs').insert(doc).select().single();
+  if(error) return sbError('Error al guardar documento', error);
+  c.docs=c.docs||[];
+  c.docs.push({_id:data.id, nombre:doc.nombre, tipo:doc.tipo, link:doc.link, descripcion:doc.descripcion, fecha:doc.fecha});
+  closeModal();
+}
+
+async function deleteDoc(clienteId,idx){
+  if(!confirm('¿Eliminar este documento?'))return;
+  var c=findCliente(clienteId);if(!c||!c.docs)return;
+  var doc=c.docs[idx];
+  if(doc && doc._id){
+    var {error} = await sb.from('docs').delete().eq('id', doc._id);
+    if(error) return sbError('Error al eliminar documento', error);
+  }
+  c.docs.splice(idx,1);
+  render();
+}
+
+// ── Tareas: CRUD ──────────────────────────────────────────────────────────
+async function saveTask(id){
+  var titulo=document.getElementById('ft_titulo').value.trim();
+  if(!titulo){alert('Escribí un título.');return;}
+  var data={
+    titulo:titulo,
+    descripcion:document.getElementById('ft_desc').value.trim(),
+    clienteId:document.getElementById('ft_cliente').value||null,
+    dueño:document.getElementById('ft_dueno').value,
+    deadline:document.getElementById('ft_deadline').value||null,
+    estado:document.getElementById('ft_estado').value,
+    prioridad:document.getElementById('ft_prio').value,
+  };
+  var dbRow = {
+    titulo:data.titulo, descripcion:data.descripcion,
+    cliente_id:data.clienteId, dueno:data.dueño,
+    deadline:data.deadline, estado:data.estado, prioridad:data.prioridad,
+  };
+  if(id){
+    var t=findTask(id);
+    var wasDone=t && t.estado==='hecho';
+    if(data.estado==='hecho' && !wasDone) dbRow.completed_at=new Date().toISOString();
+    if(data.estado!=='hecho') dbRow.completed_at=null;
+    var {error} = await sb.from('tareas').update(dbRow).eq('id', id);
+    if(error) return sbError('Error al actualizar tarea', error);
+    if(t){
+      Object.keys(data).forEach(function(k){t[k]=data[k];});
+      if(data.estado==='hecho' && !wasDone) t.completedAt=new Date().toISOString();
+      if(data.estado!=='hecho') t.completedAt=null;
+    }
+  }else{
+    var newId='task_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+    dbRow.id=newId;
+    dbRow.creado_por=S.currentUser;
+    dbRow.completed_at = data.estado==='hecho'?new Date().toISOString():null;
+    var {error} = await sb.from('tareas').insert(dbRow);
+    if(error) return sbError('Error al crear tarea', error);
+    var newTask=Object.assign({
+      id:newId, createdAt:new Date().toISOString(),
+      creadoPor:S.currentUser,
+      completedAt:dbRow.completed_at,
+    }, data);
+    TASKS.push(newTask);
+  }
+  closeModal();
+}
+
+async function deleteTask(id){
+  if(!confirm('¿Eliminar esta tarea? No se puede deshacer.'))return;
+  var {error} = await sb.from('tareas').delete().eq('id', id);
+  if(error) return sbError('Error al eliminar tarea', error);
+  TASKS=TASKS.filter(function(t){return t.id!==id;});
+  closeModal();
+}
+
+async function toggleTaskDone(id){
+  var t=findTask(id);if(!t)return;
+  var nuevoEstado = t.estado==='hecho' ? 'pendiente' : 'hecho';
+  var completedAt = nuevoEstado==='hecho' ? new Date().toISOString() : null;
+  var {error} = await sb.from('tareas').update({estado:nuevoEstado, completed_at:completedAt}).eq('id', id);
+  if(error) return sbError('Error al actualizar tarea', error);
+  t.estado = nuevoEstado;
+  t.completedAt = completedAt;
+  render();
+}
+
+function toggleCL(k){S.checked[k]=!S.checked[k];render();}
+function resetCheckClient(clienteId,tplId){
+  if(!confirm('¿Reiniciar este checklist? Se desmarcan todos los items.'))return;
+  var prefix='cl_'+clienteId+'_'+tplId+'_';
+  Object.keys(S.checked).forEach(function(k){if(k.indexOf(prefix)===0)delete S.checked[k];});
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MODALES + CRUD: Miembros del equipo
+// ═══════════════════════════════════════════════════════════════════════════
+function lines2arr(s){return s.split('\n').map(function(x){return x.trim();}).filter(Boolean);}
+function arr2lines(a){return (a||[]).join('\n');}
+
+function modalMiembro(m){
+  var isEdit=!!m;
+  var d=m||{name:'',role:'',initials:'',avatarBg:'#f5f3ef',avatarColor:'#323231',tipo:'fijo',nivel:'senior',isFounder:false,resps:[],diarias:[],semanales:[],mensuales:[],tools:[],nn:[]};
+  return '<h2>'+(isEdit?'Editar miembro':'Nuevo miembro')+'</h2>'
+    +'<div class="f-row"><div class="f-group"><label>Nombre</label><input id="fm_name" value="'+(d.name||'').replace(/"/g,'&quot;')+'" placeholder="Ej: Lucía"/></div>'
+    +'<div class="f-group"><label>Iniciales (2 letras)</label><input id="fm_init" maxlength="2" value="'+(d.initials||'')+'" placeholder="LU"/></div></div>'
+    +'<div class="f-group"><label>Rol</label><input id="fm_role" value="'+(d.role||'').replace(/"/g,'&quot;')+'" placeholder="Ej: Account Manager · Content Strategist"/></div>'
+    +'<div class="f-row"><div class="f-group"><label>Tipo</label><select id="fm_tipo"><option value="fijo"'+(d.tipo==='fijo'?' selected':'')+'>Fijo</option><option value="freelance"'+(d.tipo==='freelance'?' selected':'')+'>Freelance</option></select></div>'
+    +'<div class="f-group"><label>Nivel</label><select id="fm_nivel"><option value="junior"'+(d.nivel==='junior'?' selected':'')+'>Junior</option><option value="senior"'+(d.nivel==='senior'?' selected':'')+'>Senior</option></select></div></div>'
+    +'<div class="f-row"><div class="f-group"><label>Color avatar (fondo)</label><input id="fm_bg" type="color" value="'+(d.avatarBg||'#f5f3ef')+'"/></div>'
+    +'<div class="f-group"><label>Color avatar (texto)</label><input id="fm_fg" type="color" value="'+(d.avatarColor||'#323231')+'"/></div></div>'
+    +'<div class="f-group"><label><input id="fm_founder" type="checkbox"'+(d.isFounder?' checked':'')+' style="width:auto;margin-right:6px"/> Es founder</label></div>'
+    +'<div class="f-group"><label>Responsabilidades (una por línea)</label><textarea id="fm_resps" rows="4">'+arr2lines(d.resps)+'</textarea></div>'
+    +'<div class="f-row"><div class="f-group"><label>Tareas diarias</label><textarea id="fm_dia" rows="3">'+arr2lines(d.diarias)+'</textarea></div>'
+    +'<div class="f-group"><label>Tareas semanales</label><textarea id="fm_sem" rows="3">'+arr2lines(d.semanales)+'</textarea></div></div>'
+    +'<div class="f-group"><label>Tareas mensuales</label><textarea id="fm_men" rows="3">'+arr2lines(d.mensuales)+'</textarea></div>'
+    +'<div class="f-group"><label>Herramientas (una por línea)</label><textarea id="fm_tools" rows="2">'+arr2lines(d.tools)+'</textarea></div>'
+    +'<div class="f-group"><label>No negociables (una por línea)</label><textarea id="fm_nn" rows="3">'+arr2lines(d.nn)+'</textarea></div>'
+    +'<div style="display:flex;gap:10px;margin-top:18px">'
+    +'<button class="btn btn-dark" onclick="saveMiembro('+(isEdit?'\''+m.id+'\'':'null')+')" style="flex:1;justify-content:center">'+(isEdit?'Guardar':'Crear miembro')+'</button>'
+    +(isEdit?'<button class="btn btn-danger" onclick="deleteMiembro(\''+m.id+'\')">Eliminar</button>':'')
+    +'<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button></div>';
+}
+
+async function saveMiembro(id){
+  var name=document.getElementById('fm_name').value.trim();
+  if(!name){alert('Ingresá un nombre.');return;}
+  var data={
+    name:name,
+    role:document.getElementById('fm_role').value.trim(),
+    initials:(document.getElementById('fm_init').value.trim()||name.substring(0,2)).toUpperCase(),
+    avatarBg:document.getElementById('fm_bg').value,
+    avatarColor:document.getElementById('fm_fg').value,
+    tipo:document.getElementById('fm_tipo').value,
+    nivel:document.getElementById('fm_nivel').value,
+    isFounder:document.getElementById('fm_founder').checked,
+    resps:lines2arr(document.getElementById('fm_resps').value),
+    diarias:lines2arr(document.getElementById('fm_dia').value),
+    semanales:lines2arr(document.getElementById('fm_sem').value),
+    mensuales:lines2arr(document.getElementById('fm_men').value),
+    tools:lines2arr(document.getElementById('fm_tools').value),
+    nn:lines2arr(document.getElementById('fm_nn').value),
+  };
+  var dbRow={
+    name:data.name, role:data.role, initials:data.initials,
+    avatar_bg:data.avatarBg, avatar_color:data.avatarColor,
+    tipo:data.tipo, nivel:data.nivel, is_founder:data.isFounder,
+    resps:data.resps, diarias:data.diarias, semanales:data.semanales,
+    mensuales:data.mensuales, tools:data.tools, nn:data.nn,
+  };
+  if(id){
+    var {error} = await sb.from('team').update(dbRow).eq('id', id);
+    if(error) return sbError('Error al actualizar miembro', error);
+    var m=TEAM.find(function(t){return t.id===id;});
+    if(m){Object.keys(data).forEach(function(k){m[k]=data[k];});}
+  }else{
+    var newId=name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')||('miembro_'+Date.now());
+    while(TEAM.some(function(t){return t.id===newId;})) newId+='_';
+    dbRow.id=newId;
+    var {error} = await sb.from('team').insert(dbRow);
+    if(error) return sbError('Error al crear miembro', error);
+    TEAM.push(Object.assign({id:newId},data));
+  }
+  closeModal();
+}
+
+async function deleteMiembro(id){
+  if(!confirm('¿Eliminar este miembro? Las tareas asignadas a él quedan sin dueño.'))return;
+  var {error} = await sb.from('team').delete().eq('id', id);
+  if(error) return sbError('Error al eliminar miembro', error);
+  TEAM=TEAM.filter(function(t){return t.id!==id;});
+  if(S.role===id) S.role=TEAM[0]?TEAM[0].id:'';
+  closeModal();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MODALES + CRUD: Workflows
+// ═══════════════════════════════════════════════════════════════════════════
+function modalWorkflow(w){
+  var isEdit=!!w;
+  var d=w||{title:'',icon:'&#9672;',dur:'',color:'#323231',desc:''};
+  return '<h2>'+(isEdit?'Editar workflow':'Nuevo workflow')+'</h2>'
+    +'<div class="f-group"><label>Título</label><input id="fw_title" value="'+(d.title||'').replace(/"/g,'&quot;')+'" placeholder="Ej: Onboarding · Método MANGO"/></div>'
+    +'<div class="f-group"><label>Descripción</label><textarea id="fw_desc" rows="3">'+(d.desc||'')+'</textarea></div>'
+    +'<div class="f-row"><div class="f-group"><label>Duración</label><input id="fw_dur" value="'+(d.dur||'')+'" placeholder="Ej: 25-35 días"/></div>'
+    +'<div class="f-group"><label>Color</label><input id="fw_color" type="color" value="'+(d.color||'#323231')+'"/></div></div>'
+    +'<div style="display:flex;gap:10px;margin-top:18px">'
+    +'<button class="btn btn-dark" onclick="saveWorkflow('+(isEdit?'\''+w.id+'\'':'null')+')" style="flex:1;justify-content:center">'+(isEdit?'Guardar':'Crear workflow')+'</button>'
+    +(isEdit?'<button class="btn btn-danger" onclick="deleteWorkflow(\''+w.id+'\')">Eliminar</button>':'')
+    +'<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button></div>';
+}
+
+async function saveWorkflow(id){
+  var title=document.getElementById('fw_title').value.trim();
+  if(!title){alert('Ingresá un título.');return;}
+  var data={
+    title:title,
+    desc:document.getElementById('fw_desc').value.trim(),
+    dur:document.getElementById('fw_dur').value.trim(),
+    color:document.getElementById('fw_color').value,
+    icon:'&#9672;',
+  };
+  var dbRow={title:data.title, descripcion:data.desc, dur:data.dur, color:data.color, icon:data.icon};
+  if(id){
+    var {error} = await sb.from('workflows').update(dbRow).eq('id', id);
+    if(error) return sbError('Error al actualizar workflow', error);
+    var w=WFS.find(function(x){return x.id===id;});
+    if(w){Object.keys(data).forEach(function(k){w[k]=data[k];});}
+  }else{
+    var newId=title.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')||('wf_'+Date.now());
+    while(WFS.some(function(x){return x.id===newId;})) newId+='_';
+    dbRow.id=newId;
+    var {error} = await sb.from('workflows').insert(dbRow);
+    if(error) return sbError('Error al crear workflow', error);
+    WFS.push(Object.assign({id:newId,pasos:[]},data));
+    S.wf=newId;
+  }
+  closeModal();
+}
+
+async function deleteWorkflow(id){
+  if(!confirm('¿Eliminar este workflow? Todos sus pasos se borran.'))return;
+  var {error} = await sb.from('workflows').delete().eq('id', id);
+  if(error) return sbError('Error al eliminar workflow', error);
+  WFS=WFS.filter(function(w){return w.id!==id;});
+  if(S.wf===id) S.wf=WFS[0]?WFS[0].id:'';
+  closeModal();
+}
+
+function modalPaso(idx,wfId){
+  var w=WFS.find(function(x){return x.id===wfId;});
+  if(!w) return '';
+  var isEdit=idx!==null && idx!==undefined && !isNaN(idx);
+  var p=isEdit?w.pasos[idx]:{t:'',d:'',own:'',tiempo:'',out:''};
+  return '<h2>'+(isEdit?'Editar paso':'Nuevo paso')+' · '+w.title+'</h2>'
+    +'<div class="f-group"><label>Título del paso</label><input id="fp_t" value="'+(p.t||'').replace(/"/g,'&quot;')+'" placeholder="Ej: Kick-off y accesos"/></div>'
+    +'<div class="f-group"><label>Descripción</label><textarea id="fp_d" rows="3">'+(p.d||'')+'</textarea></div>'
+    +'<div class="f-row"><div class="f-group"><label>Dueño</label><input id="fp_own" value="'+(p.own||'')+'" placeholder="Ej: Lucía + Camila"/></div>'
+    +'<div class="f-group"><label>Tiempo</label><input id="fp_tiempo" value="'+(p.tiempo||'')+'" placeholder="Ej: Día 1"/></div></div>'
+    +'<div class="f-group"><label>Output</label><input id="fp_out" value="'+(p.out||'').replace(/"/g,'&quot;')+'" placeholder="Ej: Cuenta lista para cargar campañas"/></div>'
+    +'<div style="display:flex;gap:10px;margin-top:18px">'
+    +'<button class="btn btn-dark" onclick="savePaso('+(isEdit?idx:'null')+',\''+wfId+'\')" style="flex:1;justify-content:center">'+(isEdit?'Guardar':'Agregar paso')+'</button>'
+    +(isEdit?'<button class="btn btn-danger" onclick="deletePaso('+idx+',\''+wfId+'\')">Eliminar</button>':'')
+    +'<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button></div>';
+}
+
+async function savePaso(idx,wfId){
+  var w=WFS.find(function(x){return x.id===wfId;});
+  if(!w) return;
+  var t=document.getElementById('fp_t').value.trim();
+  if(!t){alert('Ingresá un título.');return;}
+  var data={
+    t:t,
+    d:document.getElementById('fp_d').value.trim(),
+    own:document.getElementById('fp_own').value.trim(),
+    tiempo:document.getElementById('fp_tiempo').value.trim(),
+    out:document.getElementById('fp_out').value.trim(),
+  };
+  var dbRow={workflow_id:wfId, titulo:data.t, descripcion:data.d, dueno:data.own, tiempo:data.tiempo, output:data.out};
+  if(!w.pasos) w.pasos=[];
+  var isEdit = idx!==null && idx!==undefined && !isNaN(idx);
+  if(isEdit){
+    var paso=w.pasos[idx];
+    var pasoId = paso && paso._id;
+    if(pasoId){
+      var {error} = await sb.from('workflow_pasos').update(dbRow).eq('id', pasoId);
+      if(error) return sbError('Error al actualizar paso', error);
+      data._id = pasoId;
+    }
+    w.pasos[idx]=data;
+  }else{
+    dbRow.sort_order = w.pasos.length;
+    var {data:inserted, error} = await sb.from('workflow_pasos').insert(dbRow).select().single();
+    if(error) return sbError('Error al crear paso', error);
+    data._id = inserted.id;
+    w.pasos.push(data);
+  }
+  closeModal();
+}
+
+async function deletePaso(idx,wfId){
+  if(!confirm('¿Eliminar este paso?'))return;
+  var w=WFS.find(function(x){return x.id===wfId;});
+  if(!w||!w.pasos) return;
+  var paso = w.pasos[idx];
+  if(paso && paso._id){
+    var {error} = await sb.from('workflow_pasos').delete().eq('id', paso._id);
+    if(error) return sbError('Error al eliminar paso', error);
+  }
+  w.pasos.splice(idx,1);
+  closeModal();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MODALES + CRUD: Templates
+// ═══════════════════════════════════════════════════════════════════════════
+function modalTemplate(t){
+  var isEdit=!!t;
+  var d=t||{title:'',icon:'&#9638;',owner:'',color:'#323231'};
+  return '<h2>'+(isEdit?'Editar template':'Nuevo template')+'</h2>'
+    +'<div class="f-group"><label>Título</label><input id="ft_title" value="'+(d.title||'').replace(/"/g,'&quot;')+'" placeholder="Ej: Onboarding"/></div>'
+    +'<div class="f-row"><div class="f-group"><label>Responsable</label><input id="ft_owner" value="'+(d.owner||'')+'" placeholder="Ej: Lucía"/></div>'
+    +'<div class="f-group"><label>Color</label><input id="ft_color" type="color" value="'+(d.color||'#323231')+'"/></div></div>'
+    +'<div style="display:flex;gap:10px;margin-top:18px">'
+    +'<button class="btn btn-dark" onclick="saveTemplate('+(isEdit?'\''+t.id+'\'':'null')+')" style="flex:1;justify-content:center">'+(isEdit?'Guardar':'Crear template')+'</button>'
+    +(isEdit?'<button class="btn btn-danger" onclick="deleteTemplate(\''+t.id+'\')">Eliminar</button>':'')
+    +'<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button></div>';
+}
+
+async function saveTemplate(id){
+  var title=document.getElementById('ft_title').value.trim();
+  if(!title){alert('Ingresá un título.');return;}
+  var data={
+    title:title,
+    owner:document.getElementById('ft_owner').value.trim(),
+    color:document.getElementById('ft_color').value,
+    icon:'&#9638;',
+  };
+  if(id){
+    var {error} = await sb.from('templates').update(data).eq('id', id);
+    if(error) return sbError('Error al actualizar template', error);
+    var t=TPLS.find(function(x){return x.id===id;});
+    if(t){Object.keys(data).forEach(function(k){t[k]=data[k];});}
+  }else{
+    var newId=title.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')||('tpl_'+Date.now());
+    while(TPLS.some(function(x){return x.id===newId;})) newId+='_';
+    var {error} = await sb.from('templates').insert(Object.assign({id:newId},data));
+    if(error) return sbError('Error al crear template', error);
+    TPLS.push(Object.assign({id:newId,items:[]},data));
+    S.tpl=newId;
+  }
+  closeModal();
+}
+
+async function deleteTemplate(id){
+  if(!confirm('¿Eliminar este template? Todos sus ítems se borran y se pierde el progreso de los clientes.'))return;
+  var {error} = await sb.from('templates').delete().eq('id', id);
+  if(error) return sbError('Error al eliminar template', error);
+  TPLS=TPLS.filter(function(t){return t.id!==id;});
+  if(S.tpl===id) S.tpl=TPLS[0]?TPLS[0].id:'';
+  closeModal();
+}
+
+function modalItemTpl(idx,tplId){
+  var t=TPLS.find(function(x){return x.id===tplId;});
+  if(!t) return '';
+  var isEdit=idx!==null && idx!==undefined && !isNaN(idx);
+  var item=isEdit?t.items[idx]:{text:'',cat:''};
+  return '<h2>'+(isEdit?'Editar ítem':'Nuevo ítem')+' · '+t.title+'</h2>'
+    +'<div class="f-group"><label>Texto del ítem</label><textarea id="fi_text" rows="2">'+(item.text||'')+'</textarea></div>'
+    +'<div class="f-group"><label>Categoría</label><input id="fi_cat" value="'+(item.cat||'')+'" placeholder="Ej: Admin, Técnico, Estrategia..."/></div>'
+    +'<div style="display:flex;gap:10px;margin-top:18px">'
+    +'<button class="btn btn-dark" onclick="saveItemTpl('+(isEdit?idx:'null')+',\''+tplId+'\')" style="flex:1;justify-content:center">'+(isEdit?'Guardar':'Agregar ítem')+'</button>'
+    +(isEdit?'<button class="btn btn-danger" onclick="deleteItemTpl('+idx+',\''+tplId+'\')">Eliminar</button>':'')
+    +'<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button></div>';
+}
+
+async function saveItemTpl(idx,tplId){
+  var t=TPLS.find(function(x){return x.id===tplId;});
+  if(!t) return;
+  var text=document.getElementById('fi_text').value.trim();
+  if(!text){alert('Ingresá un texto.');return;}
+  var data={text:text,cat:document.getElementById('fi_cat').value.trim()};
+  var dbRow={template_id:tplId, texto:data.text, cat:data.cat};
+  if(!t.items) t.items=[];
+  var isEdit = idx!==null && idx!==undefined && !isNaN(idx);
+  if(isEdit){
+    var item=t.items[idx];
+    var itemId = item && item._id;
+    if(itemId){
+      var {error} = await sb.from('template_items').update(dbRow).eq('id', itemId);
+      if(error) return sbError('Error al actualizar ítem', error);
+      data._id = itemId;
+    }
+    t.items[idx]=data;
+  }else{
+    dbRow.sort_order = t.items.length;
+    var {data:inserted, error} = await sb.from('template_items').insert(dbRow).select().single();
+    if(error) return sbError('Error al crear ítem', error);
+    data._id = inserted.id;
+    t.items.push(data);
+  }
+  closeModal();
+}
+
+async function deleteItemTpl(idx,tplId){
+  if(!confirm('¿Eliminar este ítem?'))return;
+  var t=TPLS.find(function(x){return x.id===tplId;});
+  if(!t||!t.items) return;
+  var item=t.items[idx];
+  if(item && item._id){
+    var {error} = await sb.from('template_items').delete().eq('id', item._id);
+    if(error) return sbError('Error al eliminar ítem', error);
+  }
+  t.items.splice(idx,1);
+  closeModal();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MODALES + CRUD: Identidad de Mango
+// ═══════════════════════════════════════════════════════════════════════════
+function modalMangoIdentidad(){
+  var m=MANGO_INFO;
+  var valoresStr=(m.valores||[]).map(function(v){return v.titulo+' :: '+v.desc;}).join('\n');
+  var personalidadStr=(m.personalidad||[]).map(function(p){return p.titulo+' :: '+p.desc;}).join('\n');
+  return '<h2>Editar identidad de Mango</h2>'
+    +'<div style="font-size:11px;color:var(--gray-mid);margin-bottom:14px">Para valores y personalidad usá el formato: <code>Título :: Descripción</code> (uno por línea).</div>'
+    +'<div class="f-group"><label>Esencia</label><textarea id="fmi_esencia" rows="3">'+(m.esencia||'')+'</textarea></div>'
+    +'<div class="f-group"><label>Misión</label><textarea id="fmi_mision" rows="2">'+(m.mision||'')+'</textarea></div>'
+    +'<div class="f-group"><label>Visión</label><textarea id="fmi_vision" rows="2">'+(m.vision||'')+'</textarea></div>'
+    +'<div class="f-group"><label>Propósito</label><textarea id="fmi_proposito" rows="2">'+(m.proposito||'')+'</textarea></div>'
+    +'<div class="f-group"><label>Posicionamiento</label><textarea id="fmi_pos" rows="2">'+(m.posicionamiento||'')+'</textarea></div>'
+    +'<div class="f-group"><label>Promesa de marca</label><input id="fmi_promesa" value="'+(m.promesa||'').replace(/"/g,'&quot;')+'"/></div>'
+    +'<div class="f-group"><label>Tono de voz</label><textarea id="fmi_tono" rows="2">'+(m.tono||'')+'</textarea></div>'
+    +'<div class="f-group"><label>Valores (Título :: Descripción, uno por línea)</label><textarea id="fmi_valores" rows="6">'+valoresStr+'</textarea></div>'
+    +'<div class="f-group"><label>Personalidad (Título :: Descripción, uno por línea)</label><textarea id="fmi_pers" rows="5">'+personalidadStr+'</textarea></div>'
+    +'<div class="f-group"><label>Cliente ideal</label><textarea id="fmi_cliente" rows="3">'+(m.clienteIdeal||'')+'</textarea></div>'
+    +'<div class="f-group"><label>Lo que NO es Mango (uno por línea)</label><textarea id="fmi_noes" rows="5">'+arr2lines(m.noEs)+'</textarea></div>'
+    +'<div style="display:flex;gap:10px;margin-top:18px">'
+    +'<button class="btn btn-dark" onclick="saveMangoIdentidad()" style="flex:1;justify-content:center">Guardar</button>'
+    +'<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button></div>';
+}
+
+function parseDoublePoints(s){
+  return s.split('\n').map(function(line){
+    var parts=line.split('::').map(function(x){return x.trim();});
+    if(parts.length<2 || !parts[0]) return null;
+    return {titulo:parts[0],desc:parts.slice(1).join('::').trim()};
+  }).filter(Boolean);
+}
+
+async function saveMangoIdentidad(){
+  var nuevo = {
+    esencia:document.getElementById('fmi_esencia').value.trim(),
+    mision:document.getElementById('fmi_mision').value.trim(),
+    vision:document.getElementById('fmi_vision').value.trim(),
+    proposito:document.getElementById('fmi_proposito').value.trim(),
+    posicionamiento:document.getElementById('fmi_pos').value.trim(),
+    promesa:document.getElementById('fmi_promesa').value.trim(),
+    tono:document.getElementById('fmi_tono').value.trim(),
+    valores:parseDoublePoints(document.getElementById('fmi_valores').value),
+    personalidad:parseDoublePoints(document.getElementById('fmi_pers').value),
+    clienteIdeal:document.getElementById('fmi_cliente').value.trim(),
+    noEs:lines2arr(document.getElementById('fmi_noes').value),
+  };
+  var dbRow = {
+    esencia:nuevo.esencia, mision:nuevo.mision, vision:nuevo.vision,
+    proposito:nuevo.proposito, posicionamiento:nuevo.posicionamiento,
+    promesa:nuevo.promesa, tono:nuevo.tono,
+    valores:nuevo.valores, personalidad:nuevo.personalidad,
+    cliente_ideal:nuevo.clienteIdeal, no_es:nuevo.noEs,
+  };
+  var {error} = await sb.from('mango_info').update(dbRow).eq('id', 1);
+  if(error) return sbError('Error al guardar identidad', error);
+  Object.keys(nuevo).forEach(function(k){MANGO_INFO[k]=nuevo[k];});
+  closeModal();
+}
+
+function modalMangoEtapa(idx){
+  var e=MANGO_INFO.metodo[idx];
+  if(!e) return '';
+  return '<h2>Etapa '+e.letra+' — '+e.titulo+'</h2>'
+    +'<div class="f-row"><div class="f-group"><label>Letra</label><input id="fme_letra" maxlength="1" value="'+(e.letra||'')+'"/></div>'
+    +'<div class="f-group" style="flex:2"><label>Título</label><input id="fme_titulo" value="'+(e.titulo||'').replace(/"/g,'&quot;')+'"/></div></div>'
+    +'<div class="f-group"><label>Descripción</label><textarea id="fme_desc" rows="5">'+(e.desc||'')+'</textarea></div>'
+    +'<div style="display:flex;gap:10px;margin-top:18px">'
+    +'<button class="btn btn-dark" onclick="saveMangoEtapa('+idx+')" style="flex:1;justify-content:center">Guardar</button>'
+    +'<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button></div>';
+}
+
+async function saveMangoEtapa(idx){
+  var e=MANGO_INFO.metodo[idx];
+  if(!e) return;
+  e.letra=document.getElementById('fme_letra').value.trim().toUpperCase();
+  e.titulo=document.getElementById('fme_titulo').value.trim();
+  e.desc=document.getElementById('fme_desc').value.trim();
+  var {error} = await sb.from('mango_info').update({metodo:MANGO_INFO.metodo}).eq('id', 1);
+  if(error) return sbError('Error al guardar etapa', error);
+  closeModal();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INIT — bootstrap con auth
+// ═══════════════════════════════════════════════════════════════════════════
+document.getElementById('googleLoginBtn').addEventListener('click', loginWithGoogle);
+
+async function boot(){
+  setLoadingMsg('Verificando sesión...');
+  var {data:{session}, error} = await sb.auth.getSession();
+  if(error || !session){
+    showLogin();
+    return;
+  }
+  // Validar dominio
+  var email = (session.user && session.user.email) || '';
+  if(!email.endsWith('@comunidadmango.com')){
+    await sb.auth.signOut();
+    showLogin('Tu cuenta (' + email + ') no es del dominio @comunidadmango.com. Solo el equipo de Mango puede entrar.');
+    return;
+  }
+  CURRENT_SESSION = session;
+  // Setear usuario actual basado en mail
+  var nameFromEmail = email.split('@')[0];
+  var matchedTeam = (TEAM || []).find(function(t){return t.id===nameFromEmail || t.name.toLowerCase()===nameFromEmail.toLowerCase();});
+  if(matchedTeam) S.currentUser = matchedTeam.name;
+  // Cargar datos
+  setLoadingMsg('Cargando datos...');
+  try{
+    await bootData();
+    // Re-match user después de cargar TEAM real
+    var matched = TEAM.find(function(t){return t.id===nameFromEmail || t.name.toLowerCase()===nameFromEmail.toLowerCase();});
+    if(matched) S.currentUser = matched.name;
+  }catch(e){
+    console.error('Error cargando datos:', e);
+    showLogin('Error al cargar datos: ' + e.message);
+    return;
+  }
+  // Bind toggle y render
+  document.getElementById('sbToggle').addEventListener('click', function(){S.sbOpen=!S.sbOpen; render();});
+  showApp();
+  render();
+}
+
+// Listener para cambios de auth (logout en otra pestaña, etc.)
+sb.auth.onAuthStateChange(function(event, session){
+  if(event==='SIGNED_OUT'){
+    CURRENT_SESSION = null;
+    showLogin();
+  }
+});
+
+boot();
+</script>
+</body>
+</html>
