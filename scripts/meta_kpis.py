@@ -1,8 +1,10 @@
 """
 Mango OS — Daily Meta KPIs sync
 ================================
-Corre todos los días a las 6am UTC. Para cada cliente con meta_ad_account_id,
-trae los KPIs del día anterior desde la Marketing API y los guarda en Supabase.
+Corre todos los días a las 9am UTC. Para cada cliente con meta_ad_account_id:
+1. Trae KPIs diarios de los últimos 30 días → tabla kpis_diarios
+2. Trae top 3 creativos del mes en curso → campo top_creativos del cliente
+3. Trae rankings de calidad/engagement/conversion → mismo registro diario
 
 Variables de entorno requeridas (vienen de GitHub Secrets):
 - META_ACCESS_TOKEN: System User token de Meta
@@ -47,54 +49,59 @@ def http_request(url, method="GET", headers=None, data=None):
 
 
 def supabase_get(table, select="*", filters=None):
-    """SELECT en Supabase via REST."""
     qs = {"select": select}
     if filters:
         qs.update(filters)
     url = f"{SUPABASE_URL}/rest/v1/{table}?{urllib.parse.urlencode(qs)}"
-    status, data = http_request(
-        url,
-        headers={
-            "apikey": SUPABASE_KEY,
-            "Authorization": f"Bearer {SUPABASE_KEY}",
-        },
-    )
+    status, data = http_request(url, headers={
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+    })
     if status >= 400:
         raise RuntimeError(f"Supabase GET {table} fallo: {status} {data}")
     return data
 
 
 def supabase_upsert(table, rows, on_conflict):
-    """UPSERT en Supabase via REST."""
     url = f"{SUPABASE_URL}/rest/v1/{table}?on_conflict={on_conflict}"
-    status, data = http_request(
-        url,
-        method="POST",
-        headers={
-            "apikey": SUPABASE_KEY,
-            "Authorization": f"Bearer {SUPABASE_KEY}",
-            "Prefer": "resolution=merge-duplicates,return=minimal",
-        },
-        data=rows,
-    )
+    status, data = http_request(url, method="POST", headers={
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Prefer": "resolution=merge-duplicates,return=minimal",
+    }, data=rows)
     if status >= 400:
         raise RuntimeError(f"Supabase UPSERT {table} fallo: {status} {data}")
     return data
 
 
-def get_meta_insights(ad_account_id, since, until):
-    """
-    Trae insights de Meta para una ad account entre dos fechas (inclusive).
-    Devuelve una lista de dicts, uno por día, con las métricas que necesitamos.
-    """
-    fields = ",".join([
-        "spend", "impressions", "reach", "clicks", "ctr", "cpm", "cpc",
-        "frequency", "actions", "action_values", "purchase_roas",
-    ])
+def supabase_update(table, row_id_field, row_id, patch):
+    url = f"{SUPABASE_URL}/rest/v1/{table}?{row_id_field}=eq.{urllib.parse.quote(str(row_id))}"
+    status, data = http_request(url, method="PATCH", headers={
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Prefer": "return=minimal",
+    }, data=patch)
+    if status >= 400:
+        raise RuntimeError(f"Supabase UPDATE {table} fallo: {status} {data}")
+    return data
+
+
+# ── Insights diarios por cuenta ─────────────────────────────────────────────
+INSIGHTS_FIELDS = ",".join([
+    "spend", "impressions", "reach", "clicks", "ctr", "cpm", "cpc",
+    "frequency", "actions", "action_values", "purchase_roas",
+    "quality_ranking", "engagement_rate_ranking", "conversion_rate_ranking",
+    "video_3_sec_watched_actions", "video_10_sec_watched_actions",
+    "video_play_actions",
+])
+
+
+def get_account_insights(ad_account_id, since, until, time_increment="1"):
+    """Insights agregados a nivel cuenta. time_increment='1' = un row por día."""
     params = {
-        "fields": fields,
+        "fields": INSIGHTS_FIELDS,
         "level": "account",
-        "time_increment": "1",
+        "time_increment": time_increment,
         "time_range": json.dumps({"since": since, "until": until}),
         "access_token": META_TOKEN,
     }
@@ -106,8 +113,68 @@ def get_meta_insights(ad_account_id, since, until):
     return data.get("data", []) if data else []
 
 
+# ── Top creativos del mes ───────────────────────────────────────────────────
+def get_top_ads(ad_account_id, since, until, limit=3):
+    """Trae las ads del período ordenadas por spend desc, con thumbnail."""
+    fields = ",".join([
+        "ad_id", "ad_name", "spend", "impressions", "clicks", "ctr",
+        "actions", "purchase_roas",
+    ])
+    params = {
+        "fields": fields,
+        "level": "ad",
+        "time_range": json.dumps({"since": since, "until": until}),
+        "limit": "100",  # traemos hasta 100 y ordenamos en código
+        "access_token": META_TOKEN,
+    }
+    url = f"https://graph.facebook.com/{META_API_VERSION}/{ad_account_id}/insights?{urllib.parse.urlencode(params)}"
+    status, data = http_request(url)
+    if status >= 400 or not data:
+        return []
+    ads = data.get("data", [])
+    # Ordenar por spend desc
+    ads.sort(key=lambda a: float(a.get("spend") or 0), reverse=True)
+    top = ads[:limit]
+
+    # Para cada top, traer thumbnail desde el endpoint de ad
+    enriched = []
+    for ad in top:
+        ad_id = ad.get("ad_id")
+        thumb = None
+        if ad_id:
+            thumb_url = f"https://graph.facebook.com/{META_API_VERSION}/{ad_id}?fields=creative{{thumbnail_url}}&access_token={META_TOKEN}"
+            s, d = http_request(thumb_url)
+            if s < 400 and d:
+                thumb = (d.get("creative") or {}).get("thumbnail_url")
+        purchases = parse_action(ad.get("actions") or [], "purchase") or parse_action(ad.get("actions") or [], "omni_purchase")
+        leads = (
+            parse_action(ad.get("actions") or [], "lead")
+            or parse_action(ad.get("actions") or [], "onsite_conversion.lead_grouped")
+            or parse_action(ad.get("actions") or [], "offsite_conversion.fb_pixel_lead")
+        )
+        roas = 0
+        proas = ad.get("purchase_roas") or []
+        if proas:
+            try:
+                roas = float(proas[0].get("value") or 0)
+            except (ValueError, TypeError, IndexError):
+                roas = 0
+        enriched.append({
+            "ad_id": ad_id,
+            "name": ad.get("ad_name") or "(sin nombre)",
+            "thumbnail": thumb,
+            "spend": float(ad.get("spend") or 0),
+            "impressions": int(ad.get("impressions") or 0),
+            "clicks": int(ad.get("clicks") or 0),
+            "ctr": float(ad.get("ctr") or 0),
+            "purchases": int(purchases),
+            "leads": int(leads),
+            "roas": roas,
+        })
+    return enriched
+
+
 def parse_action(actions, action_type):
-    """Busca un action_type específico en la lista de actions de Meta."""
     if not actions:
         return 0
     for a in actions:
@@ -119,13 +186,28 @@ def parse_action(actions, action_type):
     return 0
 
 
+def parse_video_views(actions, kind):
+    """kind = '3sec' | '10sec' | 'play' — devuelve total."""
+    if not actions:
+        return 0
+    mapping = {
+        "3sec": "video_view",  # algunos accounts mandan 'video_view' en lugar de 3_sec
+        "play": "video_play",
+    }
+    # video_3_sec_watched_actions y video_10_sec_watched_actions son arrays con action_type=video_view
+    total = 0
+    for a in actions:
+        try:
+            total += float(a.get("value", 0))
+        except (ValueError, TypeError):
+            pass
+    return int(total)
+
+
 def build_kpi_row(cliente_id, day_data):
-    """Convierte un día de insights de Meta al formato de la tabla kpis_diarios."""
     actions = day_data.get("actions") or []
-    action_values = day_data.get("action_values") or []
     purchase_roas = day_data.get("purchase_roas") or []
 
-    # Conversions y purchases (estandar en Meta)
     purchases = parse_action(actions, "purchase") or parse_action(actions, "omni_purchase")
     leads = (
         parse_action(actions, "lead")
@@ -145,6 +227,10 @@ def build_kpi_row(cliente_id, day_data):
         except (ValueError, TypeError, IndexError):
             roas = 0
 
+    v3 = parse_video_views(day_data.get("video_3_sec_watched_actions") or [], "3sec")
+    v10 = parse_video_views(day_data.get("video_10_sec_watched_actions") or [], "10sec")
+    vplay = parse_video_views(day_data.get("video_play_actions") or [], "play")
+
     return {
         "cliente_id": cliente_id,
         "fecha": day_data.get("date_start"),
@@ -162,60 +248,75 @@ def build_kpi_row(cliente_id, day_data):
         "cpa": cpa,
         "cpl": cpl,
         "roas": roas,
+        "quality_ranking": day_data.get("quality_ranking"),
+        "engagement_rate_ranking": day_data.get("engagement_rate_ranking"),
+        "conversion_rate_ranking": day_data.get("conversion_rate_ranking"),
+        "video_views_3s": v3,
+        "video_views_10s": v10,
+        "video_views_total": vplay,
         "raw_data": day_data,
     }
 
 
 def main():
-    # Determinar rango de fechas: últimos 30 días (incluye ayer). Cubre delays,
-    # da data inmediata el primer run, y permite comparativas mensuales.
-    # UPSERT por (cliente_id, fecha) hace que reejecutar no duplique nada.
     today = datetime.now(timezone.utc).date()
-    until = today - timedelta(days=1)   # ayer
-    since = today - timedelta(days=30)  # hace 30 días
+    until = today - timedelta(days=1)
+    since = today - timedelta(days=30)
 
-    print(f"📅 Sincronizando KPIs desde {since} hasta {until}")
+    # Para top creativos: mes calendario actual
+    month_start = today.replace(day=1)
+    month_until = until  # ayer
 
-    # 1. Traer clientes con ad account configurado
+    print(f"📅 Sincronizando KPIs diarios desde {since} hasta {until}")
+    print(f"🏆 Top creativos: desde {month_start} hasta {month_until}")
+
     clientes = supabase_get(
         "clientes",
         select="id,nombre,meta_ad_account_id",
         filters={"meta_ad_account_id": "not.is.null"},
     )
     if not clientes:
-        print("⚠️  No hay clientes con meta_ad_account_id configurado. Saliendo.")
+        print("⚠️  No hay clientes con meta_ad_account_id. Saliendo.")
         return
 
     print(f"🏷️  {len(clientes)} clientes a procesar")
 
-    # 2. Para cada cliente, traer insights y armar las filas
     all_rows = []
     for c in clientes:
         cliente_id = c["id"]
         ad_account = c["meta_ad_account_id"]
         nombre = c["nombre"]
-
         if not ad_account:
             continue
 
         print(f"  → {nombre} ({ad_account})")
-        days = get_meta_insights(ad_account, str(since), str(until))
-        if not days:
-            print(f"    sin data (cuenta inactiva o sin spend en el período)")
-            continue
 
-        for day in days:
-            row = build_kpi_row(cliente_id, day)
-            all_rows.append(row)
-        print(f"    ✓ {len(days)} días")
+        # 1. KPIs diarios
+        days = get_account_insights(ad_account, str(since), str(until), time_increment="1")
+        if days:
+            for day in days:
+                all_rows.append(build_kpi_row(cliente_id, day))
+            print(f"    ✓ {len(days)} días de KPIs")
+        else:
+            print(f"    sin actividad reciente")
 
-    # 3. Upsert a Supabase en batch
+        # 2. Top creativos del mes calendario
+        try:
+            top = get_top_ads(ad_account, str(month_start), str(month_until), limit=3)
+            if top:
+                supabase_update("clientes", "id", cliente_id, {"top_creativos": top})
+                print(f"    ✓ {len(top)} top creativos del mes")
+            else:
+                supabase_update("clientes", "id", cliente_id, {"top_creativos": []})
+        except Exception as e:
+            print(f"    ⚠️  Error trayendo top creativos: {e}", file=sys.stderr)
+
     if all_rows:
-        print(f"💾 Guardando {len(all_rows)} filas en Supabase...")
+        print(f"💾 Guardando {len(all_rows)} filas en kpis_diarios...")
         supabase_upsert("kpis_diarios", all_rows, on_conflict="cliente_id,fecha")
         print("✅ Sincronización completa.")
     else:
-        print("⚠️  No se generaron filas para guardar.")
+        print("⚠️  Sin filas de KPIs para guardar.")
 
 
 if __name__ == "__main__":
