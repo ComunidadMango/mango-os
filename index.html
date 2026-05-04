@@ -531,7 +531,9 @@ function saveState(){ saveCheckedLocal(); }
 // ═══════════════════════════════════════════════════════════════════════════
 async function bootData(){
   setLoadingMsg('Cargando equipo...');
-  var [teamR, wfR, wfPasosR, tplR, tplItemsR, clientesR, tasksR, mangoR, notasR, docsR] = await Promise.all([
+  // Calcular fecha hace 60 días para traer KPIs (30 actuales + 30 previos para comparativa)
+  var hace60d = new Date(Date.now() - 60*24*60*60*1000).toISOString().slice(0,10);
+  var [teamR, wfR, wfPasosR, tplR, tplItemsR, clientesR, tasksR, mangoR, notasR, docsR, kpisR] = await Promise.all([
     sb.from('team').select('*').order('sort_order'),
     sb.from('workflows').select('*').order('sort_order'),
     sb.from('workflow_pasos').select('*').order('sort_order'),
@@ -542,6 +544,7 @@ async function bootData(){
     sb.from('mango_info').select('*').eq('id',1).maybeSingle(),
     sb.from('notas').select('*').order('created_at',{ascending:false}),
     sb.from('docs').select('*').order('created_at',{ascending:false}),
+    sb.from('kpis_diarios').select('*').gte('fecha', hace60d).order('fecha',{ascending:false}),
   ]);
 
   // TEAM
@@ -593,7 +596,19 @@ async function bootData(){
     docsByCliente[d.cliente_id].push({_id:d.id,nombre:d.nombre,tipo:d.tipo,link:d.link,descripcion:d.descripcion,fecha:d.fecha});
   });
 
+  // KPIs diarios — agrupar por cliente y separar actual (últimos 30d) vs previo (31-60d)
+  var hoyISO = new Date().toISOString().slice(0,10);
+  var hace30d = new Date(Date.now() - 30*24*60*60*1000).toISOString().slice(0,10);
+  var kpisByCliente = {};
+  (kpisR && kpisR.data || []).forEach(function(r){
+    kpisByCliente[r.cliente_id] = kpisByCliente[r.cliente_id] || {actual:[], previo:[], rows:[]};
+    kpisByCliente[r.cliente_id].rows.push(r);
+    if(r.fecha >= hace30d) kpisByCliente[r.cliente_id].actual.push(r);
+    else kpisByCliente[r.cliente_id].previo.push(r);
+  });
+
   CLIENTES = (clientesR.data||[]).map(function(c){
+    var k = kpisByCliente[c.id] || {actual:[], previo:[], rows:[]};
     return {
       id:c.id, nombre:c.nombre, rubro:c.rubro,
       tipoCuenta:c.tipo_cuenta, modalidadContenido:c.modalidad_contenido,
@@ -605,7 +620,9 @@ async function bootData(){
       color:c.color, avatarColor:c.avatar_color,
       prioridades:c.prioridades||[],
       directiva:c.directiva||{},
-      kpis:c.kpis||{}, kpisPrev:c.kpis_prev||{},
+      kpis: aggregateKpis(k.actual) || c.kpis || {},
+      kpisPrev: aggregateKpis(k.previo) || c.kpis_prev || {},
+      kpisRows: k.rows, // por si en el futuro queremos mostrar gráfico de tendencia
       alertas:c.alertas||[], topCreativos:c.top_creativos||[],
       notas:notasByCliente[c.id]||[], docs:docsByCliente[c.id]||[],
       checklists:{}
@@ -718,6 +735,46 @@ function findCliente(id){return CLIENTES.filter(function(c){return c.id===id;})[
 function findTask(id){return TASKS.filter(function(t){return t.id===id;})[0];}
 function tipoCuentaLabel(t){return t==='ecommerce'?'E-commerce':'Lead gen';}
 function modalidadLabel(m){return m==='mango_produce'?'Mango produce contenido':'Cliente entrega contenido';}
+
+// ── KPIs aggregator ─────────────────────────────────────────────────────────
+// Suma KPIs de un período (array de filas de kpis_diarios) y recalcula las
+// métricas derivadas. Devuelve null si no hay filas con spend > 0.
+function aggregateKpis(rows){
+  if(!rows || !rows.length) return null;
+  var spend=0, impressions=0, reach=0, clicks=0;
+  var conversions=0, purchases=0, leads=0;
+  var roasWeighted=0, freqSum=0, freqCount=0;
+  rows.forEach(function(r){
+    var s = parseFloat(r.spend) || 0;
+    spend += s;
+    impressions += parseInt(r.impressions) || 0;
+    reach = Math.max(reach, parseInt(r.reach) || 0); // reach máx del período
+    clicks += parseInt(r.clicks) || 0;
+    conversions += parseInt(r.conversions) || 0;
+    purchases += parseInt(r.purchases) || 0;
+    leads += parseInt(r.leads) || 0;
+    if(r.roas > 0) roasWeighted += (parseFloat(r.roas) * s);
+    var f = parseFloat(r.frequency) || 0;
+    if(f > 0){ freqSum += f; freqCount++; }
+  });
+  if(spend === 0 && impressions === 0) return null;
+  return {
+    spend: spend,
+    impressions: impressions,
+    reach: reach,
+    clicks: clicks,
+    ctr: impressions ? (clicks / impressions) * 100 : 0,
+    cpm: impressions ? (spend / impressions) * 1000 : 0,
+    cpc: clicks ? spend / clicks : 0,
+    frequency: freqCount ? freqSum / freqCount : 0,
+    conversions: conversions,
+    purchases: purchases,
+    leads: leads,
+    cpa: conversions ? spend / conversions : 0,
+    cpl: leads ? spend / leads : 0,
+    roas: spend ? roasWeighted / spend : 0,
+  };
+}
 
 // ── Date helpers ────────────────────────────────────────────────────────────
 function todayISO(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -1268,16 +1325,25 @@ function pgCliente(c){
 
 // ── PERFORMANCE TAB ─────────────────────────────────────────────────────────
 function clientePerformance(c){
-  var k=c.kpis, p=c.kpisPrev||{};
+  var k=c.kpis||{}, p=c.kpisPrev||{};
   var isEcom=c.tipoCuenta==='ecommerce';
   var hasMetaId=c.metaAdAccountId && c.metaAdAccountId.length>0;
   var hasData=k.spend>0 || k.impressions>0;
+  var hasRows=c.kpisRows && c.kpisRows.length>0;
 
   var banner='';
   if(!hasMetaId){
+    banner='<div class="alert warn" style="margin-bottom:20px">'
+      +'<div class="alert-icon">&#9888;</div>'
+      +'<div class="alert-txt"><strong>Falta el Ad Account ID de Meta.</strong> Cargalo desde la pestaña Ficha → Editar para que el cron diario empiece a traer KPIs.</div></div>';
+  }else if(!hasData && !hasRows){
     banner='<div class="alert info" style="margin-bottom:20px">'
       +'<div class="alert-icon">&#9432;</div>'
-      +'<div class="alert-txt"><strong>Conexión con Meta pendiente.</strong> Cargá el ID de cuenta publicitaria en la pestaña Ficha. Mientras tanto, podés cargar los KPIs manualmente o esperar a la integración con Meta API (Fase 3).</div></div>';
+      +'<div class="alert-txt"><strong>Sincronizando con Meta.</strong> Cuenta conectada (<code>'+c.metaAdAccountId+'</code>) pero todavía no llegó data. El cron corre todos los días a las 6am; si recién agregaste la cuenta, puede tardar hasta 24hs en aparecer.</div></div>';
+  }else if(!hasData && hasRows){
+    banner='<div class="alert info" style="margin-bottom:20px">'
+      +'<div class="alert-icon">&#9432;</div>'
+      +'<div class="alert-txt"><strong>Sin actividad en los últimos 30 días.</strong> La cuenta está conectada pero no tuvo gasto reciente. Si la campaña está activa y no aparecen métricas, revisá Meta Ads Manager.</div></div>';
   }
 
   var kpis=[
