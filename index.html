@@ -743,19 +743,28 @@ function aggregateKpis(rows){
   if(!rows || !rows.length) return null;
   var spend=0, impressions=0, reach=0, clicks=0;
   var conversions=0, purchases=0, leads=0;
+  var v3s=0, v10s=0, vTotal=0;
   var roasWeighted=0, freqSum=0, freqCount=0;
+  // Para rankings: tomamos el del último día con data (más reciente)
+  var lastRanking = {quality:null, engagement:null, conversion:null};
   rows.forEach(function(r){
     var s = parseFloat(r.spend) || 0;
     spend += s;
     impressions += parseInt(r.impressions) || 0;
-    reach = Math.max(reach, parseInt(r.reach) || 0); // reach máx del período
+    reach = Math.max(reach, parseInt(r.reach) || 0);
     clicks += parseInt(r.clicks) || 0;
     conversions += parseInt(r.conversions) || 0;
     purchases += parseInt(r.purchases) || 0;
     leads += parseInt(r.leads) || 0;
+    v3s += parseInt(r.video_views_3s) || 0;
+    v10s += parseInt(r.video_views_10s) || 0;
+    vTotal += parseInt(r.video_views_total) || 0;
     if(r.roas > 0) roasWeighted += (parseFloat(r.roas) * s);
     var f = parseFloat(r.frequency) || 0;
     if(f > 0){ freqSum += f; freqCount++; }
+    if(r.quality_ranking) lastRanking.quality = r.quality_ranking;
+    if(r.engagement_rate_ranking) lastRanking.engagement = r.engagement_rate_ranking;
+    if(r.conversion_rate_ranking) lastRanking.conversion = r.conversion_rate_ranking;
   });
   if(spend === 0 && impressions === 0) return null;
   return {
@@ -773,7 +782,88 @@ function aggregateKpis(rows){
     cpa: conversions ? spend / conversions : 0,
     cpl: leads ? spend / leads : 0,
     roas: spend ? roasWeighted / spend : 0,
+    hookRate: impressions ? (v3s / impressions) * 100 : 0,
+    holdRate: impressions ? (v10s / impressions) * 100 : 0,
+    videoViews: vTotal,
+    qualityRanking: lastRanking.quality,
+    engagementRanking: lastRanking.engagement,
+    conversionRanking: lastRanking.conversion,
   };
+}
+
+// Parsea un texto de presupuesto buscando el primer número.
+// Ej: "USD 1.500/mes" → 1500, "USD —" → 0
+function parsePresupuesto(txt){
+  if(!txt) return 0;
+  var m = String(txt).replace(/\./g,'').replace(/,/g,'.').match(/(\d+(?:\.\d+)?)/);
+  return m ? parseFloat(m[1]) : 0;
+}
+
+// Mapea un ranking de Meta a {color, label, severity}
+function rankingInfo(r){
+  if(!r || r==='UNKNOWN') return {color:'#c6c5c5',label:'sin data',sev:'none'};
+  if(r==='ABOVE_AVERAGE') return {color:'#2e7d32',label:'por encima',sev:'good'};
+  if(r==='AVERAGE') return {color:'#e8a020',label:'promedio',sev:'mid'};
+  if(r && r.indexOf('BELOW_AVERAGE')===0) return {color:'#c62828',label:'por debajo',sev:'bad'};
+  return {color:'#737373',label:r.toLowerCase(),sev:'none'};
+}
+
+// Genera alertas automáticas basadas en KPIs vs umbrales razonables
+function autoAlerts(c){
+  var k = c.kpis || {}, p = c.kpisPrev || {};
+  var isEcom = c.tipoCuenta === 'ecommerce';
+  var alerts = [];
+
+  // Frecuencia alta
+  if(k.frequency > 3){
+    alerts.push({sev:'warn', txt:'Frecuencia alta ('+fmt(k.frequency,2)+'). Renová creatividades para evitar fatiga.'});
+  }
+
+  // Ranking malo
+  var rk = rankingInfo(k.qualityRanking);
+  if(rk.sev === 'bad'){
+    alerts.push({sev:'warn', txt:'Quality Ranking BAJO según Meta. Revisá creativos/copy/landing.'});
+  }
+  var re = rankingInfo(k.engagementRanking);
+  if(re.sev === 'bad'){
+    alerts.push({sev:'warn', txt:'Engagement Ranking BAJO. Los usuarios no interactúan con el anuncio.'});
+  }
+  var rc = rankingInfo(k.conversionRanking);
+  if(rc.sev === 'bad'){
+    alerts.push({sev:'warn', txt:'Conversion Ranking BAJO. Revisá targeting o oferta.'});
+  }
+
+  // ROAS bajo (ecommerce)
+  if(isEcom && k.spend > 0 && k.roas > 0 && k.roas < 1.5){
+    alerts.push({sev:'danger', txt:'ROAS bajo ('+fmtX(k.roas)+'). Por debajo del punto de equilibrio.'});
+  }
+
+  // CPL/CPA aumento >30% vs mes anterior
+  if(!isEcom && p.cpl > 0 && k.cpl > p.cpl * 1.3){
+    var pctUp = ((k.cpl/p.cpl - 1) * 100);
+    alerts.push({sev:'warn', txt:'CPL subió '+fmt(pctUp,0)+'% vs período anterior ('+fmtUSD(p.cpl)+' → '+fmtUSD(k.cpl)+').'});
+  }
+  if(isEcom && p.cpa > 0 && k.cpa > p.cpa * 1.3){
+    var pctUp2 = ((k.cpa/p.cpa - 1) * 100);
+    alerts.push({sev:'warn', txt:'CPA subió '+fmt(pctUp2,0)+'% vs período anterior.'});
+  }
+
+  // CPM disparado
+  if(p.cpm > 0 && k.cpm > p.cpm * 1.4){
+    alerts.push({sev:'warn', txt:'CPM subió fuerte vs período anterior. Audiencia saturada o baja calidad.'});
+  }
+
+  // CTR bajo
+  if(k.impressions > 5000 && k.ctr < 0.8){
+    alerts.push({sev:'warn', txt:'CTR bajo ('+fmtPct(k.ctr,2)+'). Considerá testear nuevos hooks.'});
+  }
+
+  // Sin actividad reciente
+  if(k.spend === 0 && k.impressions === 0 && c.metaAdAccountId){
+    alerts.push({sev:'info', txt:'Cuenta conectada pero sin actividad en los últimos 30 días.'});
+  }
+
+  return alerts;
 }
 
 // ── Date helpers ────────────────────────────────────────────────────────────
@@ -1346,51 +1436,125 @@ function clientePerformance(c){
       +'<div class="alert-txt"><strong>Sin actividad en los últimos 30 días.</strong> La cuenta está conectada pero no tuvo gasto reciente. Si la campaña está activa y no aparecen métricas, revisá Meta Ads Manager.</div></div>';
   }
 
+  // ── 1. PACING DEL PRESUPUESTO ────────────────────────────────────────
+  var presupuesto = parsePresupuesto(c.presupuestoPauta);
+  var hoyDate = new Date();
+  var diasDelMes = new Date(hoyDate.getFullYear(), hoyDate.getMonth()+1, 0).getDate();
+  var diaActual = hoyDate.getDate();
+  var pctMes = (diaActual / diasDelMes) * 100;
+  var pctGastado = presupuesto > 0 ? (k.spend / presupuesto) * 100 : 0;
+  var pacingHtml = '';
+  if(presupuesto > 0){
+    var diff = pctGastado - pctMes;
+    var diffLabel = '', diffColor = 'var(--gray-mid)';
+    if(Math.abs(diff) < 5){ diffLabel = 'En ritmo'; diffColor = 'var(--success)'; }
+    else if(diff > 0){ diffLabel = 'Adelantada · gastando '+fmt(diff,0)+'% más rápido'; diffColor = 'var(--warn)'; }
+    else { diffLabel = 'Atrasada · gastando '+fmt(Math.abs(diff),0)+'% más lento'; diffColor = 'var(--info)'; }
+    pacingHtml = '<div class="card" style="margin-bottom:20px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px">'
+      +'<div><div class="section-lbl" style="margin-bottom:4px">Pacing del presupuesto</div>'
+      +'<div style="font-family:\'Oswald\',sans-serif;font-size:24px;font-weight:600">'+fmtUSD(k.spend)+' / '+fmtUSD(presupuesto)+'</div></div>'
+      +'<div style="text-align:right"><div style="font-family:\'Poppins\',sans-serif;font-size:11px;color:var(--gray-mid);text-transform:uppercase;letter-spacing:.05em">Día '+diaActual+' de '+diasDelMes+'</div>'
+      +'<div style="font-family:\'Poppins\',sans-serif;font-size:12px;font-weight:600;color:'+diffColor+';margin-top:2px">'+diffLabel+'</div></div></div>'
+      +'<div style="position:relative;height:10px;background:rgba(50,50,49,.08);border-radius:5px;overflow:hidden;margin-bottom:6px">'
+      +'<div style="position:absolute;left:0;top:0;height:100%;width:'+Math.min(pctGastado,100)+'%;background:var(--dark);border-radius:5px"></div>'
+      +'<div style="position:absolute;left:'+pctMes+'%;top:-3px;height:16px;width:2px;background:var(--accent)" title="Día actual del mes"></div>'
+      +'</div>'
+      +'<div style="display:flex;justify-content:space-between;font-family:\'Poppins\',sans-serif;font-size:10px;color:var(--gray-mid)">'
+      +'<span>'+fmt(pctGastado,0)+'% gastado</span>'
+      +'<span>'+fmt(pctMes,0)+'% del mes transcurrido</span></div></div>';
+  }
+
+  // ── 2. KPIs PRINCIPALES (8 cards en 4×2) ─────────────────────────────
+  var resultadoLabel = isEcom ? 'Compras' : 'Leads';
+  var resultadoVal = isEcom ? k.purchases : k.leads;
+  var costoResultadoLabel = isEcom ? 'CPA' : 'CPL';
+  var costoResultadoVal = isEcom ? k.cpa : k.cpl;
+  var costoResultadoPrev = isEcom ? p.cpa : p.cpl;
+
   var kpis=[
-    {l:'Inversión del mes',v:fmtUSD(k.spend),t:trend(k.spend,p.spend),inv:false},
-    isEcom
-      ? {l:'ROAS',v:fmtX(k.roas),t:trend(k.roas,p.roas),inv:false}
-      : {l:'CPL',v:fmtUSD(k.cpl),t:trend(k.cpl,p.cpl,true),inv:false},
-    {l:isEcom?'Compras':'Leads',v:fmt(isEcom?k.purchases:k.leads,0),t:{dir:'flat',sym:'—'},inv:false},
-    {l:'CTR',v:fmtPct(k.ctr,2),t:trend(k.ctr,p.ctr),inv:false},
-    {l:'CPM',v:fmtUSD(k.cpm),t:trend(k.cpm,0,true),inv:true},
-    {l:'Frecuencia',v:fmt(k.frequency,2),t:trend(k.frequency,p.frequency,true),inv:true},
+    {l:'Inversión 30d',v:fmtUSD(k.spend),t:trend(k.spend,p.spend)},
+    isEcom ? {l:'ROAS',v:fmtX(k.roas),t:trend(k.roas,p.roas)}
+           : {l:costoResultadoLabel,v:fmtUSD(costoResultadoVal),t:trend(costoResultadoVal,costoResultadoPrev,true)},
+    {l:resultadoLabel,v:fmt(resultadoVal,0),t:trend(resultadoVal,isEcom?p.purchases:p.leads)},
+    {l:'Alcance',v:fmt(k.reach,0),t:trend(k.reach,p.reach)},
+    {l:'CTR',v:fmtPct(k.ctr,2),t:trend(k.ctr,p.ctr)},
+    {l:'CPM',v:fmtUSD(k.cpm),t:trend(k.cpm,p.cpm,true)},
+    {l:'CPC',v:fmtUSD(k.cpc),t:trend(k.cpc,p.cpc,true)},
+    {l:'Frecuencia',v:fmt(k.frequency,2),t:trend(k.frequency,p.frequency,true)},
   ];
 
-  var kpiHtml='<div class="g3" style="margin-bottom:20px">'+kpis.map(function(kp){
+  var kpiHtml='<div class="g4" style="margin-bottom:20px">'+kpis.map(function(kp){
     var arrow=kp.t.dir==='up'?'↑':kp.t.dir==='down'?'↓':'→';
     var pct=kp.t.pct?' '+fmt(kp.t.pct,1)+'%':'';
     return '<div class="kpi-card">'
       +'<div class="kpi-lbl">'+kp.l+'</div>'
       +'<div class="kpi-val">'+kp.v+'</div>'
-      +'<div class="kpi-trend '+kp.t.dir+'">'+arrow+pct+' vs mes ant.</div></div>';
+      +'<div class="kpi-trend '+kp.t.dir+'">'+arrow+pct+' vs período ant.</div></div>';
   }).join('')+'</div>';
 
-  // Alertas
-  var alertasHtml='';
-  if(c.alertas && c.alertas.length){
-    alertasHtml='<div class="section-lbl">Alertas</div>'
-      +c.alertas.map(function(a){return '<div class="alert '+a.severidad+'">'
-        +'<div class="alert-icon">'+(a.severidad==='danger'?'&#9888;':a.severidad==='warn'?'&#9888;':'&#9432;')+'</div>'
-        +'<div class="alert-txt">'+a.mensaje+'<div class="alert-meta">'+(a.fecha||'')+'</div></div></div>';}).join('')
-      +'<div style="margin-bottom:24px"></div>';
-  }else{
-    alertasHtml='<div class="section-lbl">Alertas</div>'
-      +'<div class="card" style="padding:18px;text-align:center;color:var(--gray-mid);font-size:13px;margin-bottom:24px">Sin alertas. Las alertas automáticas se activan cuando se conecte con Meta API.</div>';
+  // ── 3. RANKINGS DE META + HOOK/HOLD RATE ─────────────────────────────
+  var rankingsHtml = '';
+  if(hasData){
+    var rk = rankingInfo(k.qualityRanking);
+    var re = rankingInfo(k.engagementRanking);
+    var rc = rankingInfo(k.conversionRanking);
+    var hookPct = k.hookRate || 0;
+    var holdPct = k.holdRate || 0;
+    var hasVideo = (k.videoViews||0) > 0;
+
+    rankingsHtml = '<div class="section-lbl">Salud de la cuenta · según Meta</div>'
+      +'<div class="g3" style="margin-bottom:18px">'
+      +rankingDot('Quality',rk)
+      +rankingDot('Engagement',re)
+      +rankingDot('Conversion',rc)
+      +'</div>';
+
+    if(hasVideo){
+      rankingsHtml += '<div class="section-lbl">Engagement de videos</div>'
+        +'<div class="g2" style="margin-bottom:24px">'
+        +'<div class="kpi-card"><div class="kpi-lbl">Hook Rate (3s/imp)</div><div class="kpi-val">'+fmtPct(hookPct,1)+'</div><div class="kpi-trend flat">'+(hookPct>25?'Excelente':hookPct>15?'Bueno':hookPct>8?'Aceptable':'Bajo · revisá hooks')+'</div></div>'
+        +'<div class="kpi-card"><div class="kpi-lbl">Hold Rate (10s/imp)</div><div class="kpi-val">'+fmtPct(holdPct,1)+'</div><div class="kpi-trend flat">'+(holdPct>10?'Excelente':holdPct>5?'Bueno':holdPct>2?'Aceptable':'Bajo · contenido no retiene')+'</div></div>'
+        +'</div>';
+    }
   }
 
-  // Top creativos
+  // ── 4. ALERTAS AUTOMÁTICAS ───────────────────────────────────────────
+  var alerts = autoAlerts(c);
+  var alertasHtml='';
+  if(alerts.length){
+    alertasHtml = '<div class="section-lbl">Alertas</div>'
+      +alerts.map(function(a){return '<div class="alert '+a.sev+'">'
+        +'<div class="alert-icon">'+(a.sev==='danger'?'&#9888;':a.sev==='warn'?'&#9888;':'&#9432;')+'</div>'
+        +'<div class="alert-txt">'+a.txt+'</div></div>';}).join('')
+      +'<div style="margin-bottom:24px"></div>';
+  }else if(hasData){
+    alertasHtml = '<div class="section-lbl">Alertas</div>'
+      +'<div class="alert info" style="margin-bottom:24px"><div class="alert-icon">&#10003;</div><div class="alert-txt"><strong>Todo en orden.</strong> Sin alertas automáticas. KPIs dentro de los rangos esperados.</div></div>';
+  }
+
+  // ── 5. TOP CREATIVOS DEL MES ─────────────────────────────────────────
   var creativosHtml='<div class="section-lbl">Top creativos del mes</div>';
   if(c.topCreativos && c.topCreativos.length){
-    creativosHtml+='<div class="g3" style="margin-bottom:24px">'+c.topCreativos.slice(0,3).map(function(cr){return '<div class="creative-card">'
-      +'<div class="creative-thumb">'+(cr.formato||'creative')+'</div>'
-      +'<div class="creative-title">'+cr.nombre+'</div>'
-      +'<div class="creative-stats"><span>CTR '+fmtPct(cr.ctr,1)+'</span><span>'+(isEcom?'ROAS '+fmtX(cr.roas):'CPL '+fmtUSD(cr.cpl))+'</span></div></div>';}).join('')+'</div>';
+    creativosHtml+='<div class="g3" style="margin-bottom:24px">'+c.topCreativos.slice(0,3).map(function(cr,i){
+      var thumb = cr.thumbnail
+        ? '<img src="'+cr.thumbnail+'" style="width:100%;aspect-ratio:1.2;object-fit:cover;border-radius:8px;margin-bottom:10px"/>'
+        : '<div class="creative-thumb">#'+(i+1)+' · sin preview</div>';
+      var stat2 = isEcom
+        ? (cr.roas>0 ? 'ROAS '+fmtX(cr.roas) : fmt(cr.purchases||0,0)+' compras')
+        : (cr.leads>0 ? fmt(cr.leads,0)+' leads' : 'Sin conv.');
+      return '<div class="creative-card">'
+        +thumb
+        +'<div class="creative-title" title="'+(cr.name||'').replace(/"/g,'&quot;')+'">'+(cr.name||'(sin nombre)').substring(0,40)+'</div>'
+        +'<div class="creative-stats"><span>CTR '+fmtPct(cr.ctr,1)+'</span><span>'+stat2+'</span><span>'+fmtUSD(cr.spend)+'</span></div></div>';
+    }).join('')+'</div>';
+  }else if(hasData){
+    creativosHtml+='<div class="card" style="padding:18px;text-align:center;color:var(--gray-mid);font-size:13px;margin-bottom:24px">Top creativos no disponibles para este período. Se actualizan diariamente con el cron.</div>';
   }else{
-    creativosHtml+='<div class="card" style="padding:24px;text-align:center;color:var(--gray-mid);font-size:13px;margin-bottom:24px">Sin creativos registrados todavía. Se cargarán automáticamente con la integración de Meta.</div>';
+    creativosHtml = '';
   }
 
-  // Resumen rápido del cliente
+  // ── 6. RESUMEN DEL CLIENTE ───────────────────────────────────────────
   var resumen='<div class="g2" style="margin-bottom:24px">'
     +'<div class="card"><div class="section-lbl" style="margin-bottom:14px">Cuenta</div>'
     +'<table class="kv-table"><tr><td>Tipo</td><td>'+tipoCuentaLabel(c.tipoCuenta)+'</td></tr>'
@@ -1405,7 +1569,15 @@ function clientePerformance(c){
     +(c.prioridades && c.prioridades.length?c.prioridades.map(function(p){return '<div style="display:flex;gap:8px;margin-bottom:8px"><span style="color:var(--accent)">→</span><span style="font-size:13.5px;line-height:1.5">'+p+'</span></div>';}).join(''):'<div style="color:var(--gray-mid);font-size:13px">Sin prioridades cargadas. Editá el cliente para agregar.</div>')
     +'</div></div>';
 
-  return banner+kpiHtml+alertasHtml+creativosHtml+resumen;
+  return banner + pacingHtml + kpiHtml + rankingsHtml + alertasHtml + creativosHtml + resumen;
+}
+
+function rankingDot(label, info){
+  return '<div class="card" style="padding:14px 18px;border-left:4px solid '+info.color+'">'
+    +'<div style="display:flex;align-items:center;gap:10px">'
+    +'<div style="width:12px;height:12px;border-radius:50%;background:'+info.color+';flex-shrink:0"></div>'
+    +'<div><div style="font-family:\'Oswald\',sans-serif;font-size:13px;font-weight:600">'+label+'</div>'
+    +'<div style="font-family:\'Poppins\',sans-serif;font-size:11px;color:var(--gray-mid);text-transform:capitalize">'+info.label+'</div></div></div></div>';
 }
 
 // ── OPERATIVO TAB — estado actual + checklists del cliente ────────────────
