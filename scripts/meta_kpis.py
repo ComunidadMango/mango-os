@@ -167,11 +167,12 @@ def build_kpi_row(cliente_id, day_data):
 
 
 def main():
-    # Determinar rango de fechas: últimos 7 días (incluye ayer). Esto cubre delays
-    # y hace que el primer run del cron tenga data útil aunque no sea solo del día.
+    # Determinar rango de fechas: últimos 30 días (incluye ayer). Cubre delays,
+    # da data inmediata el primer run, y permite comparativas mensuales.
+    # UPSERT por (cliente_id, fecha) hace que reejecutar no duplique nada.
     today = datetime.now(timezone.utc).date()
-    until = today - timedelta(days=1)  # ayer
-    since = today - timedelta(days=7)  # hace 7 días
+    until = today - timedelta(days=1)   # ayer
+    since = today - timedelta(days=30)  # hace 30 días
 
     print(f"📅 Sincronizando KPIs desde {since} hasta {until}")
 
