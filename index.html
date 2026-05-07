@@ -1014,7 +1014,7 @@ function isToday(t){return t.deadline && daysUntil(t.deadline)===0;}
 function isThisWeek(t){if(!t.deadline)return false;var d=daysUntil(t.deadline);return d>=0 && d<=7;}
 
 // ── Task filtering ──────────────────────────────────────────────────────────
-function tasksOf(user){return TASKS.filter(function(t){return t.dueño===user;});}
+function tasksOf(user){return TASKS.filter(function(t){return (Array.isArray(t.dueño)?t.dueño:[t.dueño]).includes(user);});}
 function tasksOfClient(cid){return TASKS.filter(function(t){return t.clienteId===cid;});}
 function sortByDeadline(arr){return arr.slice().sort(function(a,b){
   if(!a.deadline && !b.deadline) return 0;
@@ -1037,8 +1037,8 @@ function userAvatar(name,size){
 function nav(p){S.page=p;S.clienteTab='operativo';render();window.scrollTo(0,0);}
 
 function buildNavItems(){
-  var atrasadas=TASKS.filter(function(t){return t.dueño===S.currentUser && isOverdue(t);}).length;
-  var hoy=TASKS.filter(function(t){return t.dueño===S.currentUser && isToday(t) && t.estado!=='hecho';}).length;
+  var atrasadas=TASKS.filter(function(t){return (Array.isArray(t.dueño)?t.dueño:[t.dueño]).includes(S.currentUser) && isOverdue(t);}).length;
+  var hoy=TASKS.filter(function(t){return (Array.isArray(t.dueño)?t.dueño:[t.dueño]).includes(S.currentUser) && isToday(t) && t.estado!=='hecho';}).length;
   var miDiaBadge='';
   if(atrasadas>0) miDiaBadge=' <span style="background:#c62828;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:600;margin-left:4px">'+atrasadas+'</span>';
   else if(hoy>0) miDiaBadge=' <span style="background:#e8a020;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:600;margin-left:4px">'+hoy+'</span>';
@@ -1466,7 +1466,7 @@ function taskRow(t){
     +'</div>'
     +(t.descripcion?'<div style="font-size:12px;color:var(--gray-mid);margin-top:5px;line-height:1.45">'+t.descripcion+'</div>':'')
     +'</div>'
-    +userAvatar(t.dueño,28)
+    +'<div style="display:flex;gap:3px">'+(Array.isArray(t.dueño)?t.dueño:[t.dueño]).map(function(n){return userAvatar(n,28);}).join('')+'</div>'
     +'</div>';
 }
 
@@ -1476,7 +1476,7 @@ function taskRow(t){
 function pgTareas(){
   var f=S.taskFilter;
   var lista=TASKS.slice();
-  if(f==='mias') lista=lista.filter(function(t){return t.dueño===S.currentUser;});
+  if(f==='mias') lista=lista.filter(function(t){return (Array.isArray(t.dueño)?t.dueño:[t.dueño]).includes(S.currentUser);});
   else if(f==='atrasadas') lista=lista.filter(isOverdue);
   else if(f==='hoy') lista=lista.filter(function(t){return isToday(t) && t.estado!=='hecho';});
   else if(f==='semana') lista=lista.filter(function(t){var d=daysUntil(t.deadline);return d!==null && d>=0 && d<=7 && t.estado!=='hecho';});
@@ -1873,7 +1873,7 @@ function renderModal(){
 
 function modalTarea(t,clienteIdPrefill){
   var isEdit=!!t;
-  var def=t||{titulo:'',descripcion:'',clienteId:clienteIdPrefill||'',dueño:S.currentUser,deadline:'',estado:'pendiente',prioridad:'media'};
+  var def=t||{titulo:'',descripcion:'',clienteId:clienteIdPrefill||'',dueño:[S.currentUser],deadline:'',estado:'pendiente',prioridad:'media'};
   return '<h2>'+(isEdit?'Editar tarea':'Nueva tarea')+'</h2>'
     +'<div class="f-group"><label>Título</label><input id="ft_titulo" value="'+(def.titulo||'').replace(/"/g,'&quot;')+'" placeholder="Ej: Cargar campañas de Cristal"/></div>'
     +'<div class="f-group"><label>Descripción (opcional)</label><textarea id="ft_desc" rows="2" placeholder="Detalles, contexto, links...">'+(def.descripcion||'')+'</textarea></div>'
@@ -1882,7 +1882,7 @@ function modalTarea(t,clienteIdPrefill){
     +'<option value=""'+(!def.clienteId?' selected':'')+'>— Mango interno —</option>'
     +CLIENTES.map(function(c){return '<option value="'+c.id+'"'+(def.clienteId===c.id?' selected':'')+'>'+c.nombre+'</option>';}).join('')
     +'</select></div>'
-    +'<div class="f-group"><label>Dueño</label><select id="ft_dueno">'+TEAM.map(function(m){return '<option'+(def.dueño===m.name?' selected':'')+'>'+m.name+'</option>';}).join('')+'</select></div>'
+    +'<div class="f-group"><label>Dueño</label><div style="display:flex;flex-wrap:wrap;gap:10px;padding:6px 0">'+TEAM.map(function(m){var checked=(Array.isArray(def.dueño)?def.dueño:[def.dueño]).includes(m.name);return '<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-family:\'Poppins\',sans-serif;font-size:13px"><input type="checkbox" class="ft_dueno_cb" value="'+m.name+'"'+(checked?' checked':'')+'>'+m.name+'</label>';}).join('')+'</div></div>'
     +'</div>'
     +'<div class="f-row">'
     +'<div class="f-group"><label>Deadline</label><input id="ft_deadline" type="date" value="'+(def.deadline||'')+'"/></div>'
@@ -2100,7 +2100,7 @@ async function saveTask(id){
     titulo:titulo,
     descripcion:document.getElementById('ft_desc').value.trim(),
     clienteId:document.getElementById('ft_cliente').value||null,
-    dueño:document.getElementById('ft_dueno').value,
+    dueño:Array.from(document.querySelectorAll('.ft_dueno_cb:checked')).map(function(el){return el.value;}),
     deadline:document.getElementById('ft_deadline').value||null,
     estado:document.getElementById('ft_estado').value,
     prioridad:document.getElementById('ft_prio').value,
