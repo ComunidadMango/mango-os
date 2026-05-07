@@ -655,6 +655,134 @@ async function bootData(){
 function setLoadingMsg(m){var el=document.getElementById('loadingMsg');if(el)el.textContent=m;}
 
 // ═══════════════════════════════════════════════════════════════════════════
+// REALTIME — suscripciones a cambios en vivo
+// ───────────────────────────────────────────────────────────────────────────
+// Cuando alguien (Cami, Lucía, Matheo...) cambia algo, todos los demás
+// navegadores reciben el cambio y se actualizan automáticamente.
+// ═══════════════════════════════════════════════════════════════════════════
+function taskFromDb(t){
+  return {
+    id:t.id, titulo:t.titulo, descripcion:t.descripcion,
+    clienteId:t.cliente_id, dueño:t.dueno,
+    deadline:t.deadline, estado:t.estado, prioridad:t.prioridad,
+    creadoPor:t.creado_por, createdAt:t.created_at, completedAt:t.completed_at,
+  };
+}
+function notaFromDb(n){
+  return {_id:n.id, fecha:n.fecha, autor:n.autor, texto:n.texto};
+}
+function docFromDb(d){
+  return {_id:d.id, nombre:d.nombre, tipo:d.tipo, link:d.link, descripcion:d.descripcion, fecha:d.fecha};
+}
+
+// Re-render seguro: si hay un modal abierto, NO re-renderiza (no perdemos input).
+// Los datos en memoria se actualizan igual; cuando se cierre el modal, render natural reflejará.
+function safeRender(){
+  if(S.modal) return;
+  render();
+}
+
+function handleTareaChange(payload){
+  if(payload.eventType==='INSERT' && payload.new){
+    if(!TASKS.find(function(x){return x.id===payload.new.id;})) TASKS.push(taskFromDb(payload.new));
+  } else if(payload.eventType==='UPDATE' && payload.new){
+    var idx=TASKS.findIndex(function(x){return x.id===payload.new.id;});
+    if(idx>=0) TASKS[idx]=taskFromDb(payload.new);
+    else TASKS.push(taskFromDb(payload.new));
+  } else if(payload.eventType==='DELETE' && payload.old){
+    TASKS=TASKS.filter(function(x){return x.id!==payload.old.id;});
+  }
+  safeRender();
+}
+
+function handleNotaChange(payload){
+  var clienteId = (payload.new||payload.old||{}).cliente_id;
+  if(!clienteId) return;
+  var c = findCliente(clienteId);
+  if(!c){ safeRender(); return; }
+  c.notas = c.notas || [];
+  if(payload.eventType==='INSERT' && payload.new){
+    if(!c.notas.find(function(n){return n._id===payload.new.id;})) c.notas.unshift(notaFromDb(payload.new));
+  } else if(payload.eventType==='UPDATE' && payload.new){
+    var i=c.notas.findIndex(function(n){return n._id===payload.new.id;});
+    if(i>=0) c.notas[i]=notaFromDb(payload.new);
+  } else if(payload.eventType==='DELETE' && payload.old){
+    c.notas = c.notas.filter(function(n){return n._id!==payload.old.id;});
+  }
+  safeRender();
+}
+
+function handleDocChange(payload){
+  var clienteId = (payload.new||payload.old||{}).cliente_id;
+  if(!clienteId) return;
+  var c = findCliente(clienteId);
+  if(!c){ safeRender(); return; }
+  c.docs = c.docs || [];
+  if(payload.eventType==='INSERT' && payload.new){
+    if(!c.docs.find(function(d){return d._id===payload.new.id;})) c.docs.unshift(docFromDb(payload.new));
+  } else if(payload.eventType==='UPDATE' && payload.new){
+    var i=c.docs.findIndex(function(d){return d._id===payload.new.id;});
+    if(i>=0) c.docs[i]=docFromDb(payload.new);
+  } else if(payload.eventType==='DELETE' && payload.old){
+    c.docs = c.docs.filter(function(d){return d._id!==payload.old.id;});
+  }
+  safeRender();
+}
+
+function handleClienteChange(payload){
+  if(payload.eventType==='UPDATE' && payload.new){
+    var idx=CLIENTES.findIndex(function(c){return c.id===payload.new.id;});
+    if(idx>=0){
+      var existing=CLIENTES[idx];
+      var c=payload.new;
+      // Actualizar campos editables sin pisar notas/docs/kpis ya cargados
+      existing.nombre=c.nombre; existing.rubro=c.rubro;
+      existing.tipoCuenta=c.tipo_cuenta; existing.modalidadContenido=c.modalidad_contenido;
+      existing.estado=c.estado; existing.fase=c.fase;
+      existing.accountManager=c.account_manager; existing.mediaBuyer=c.media_buyer;
+      existing.presupuestoPauta=c.presupuesto_pauta; existing.presupuestoServicio=c.presupuesto_servicio;
+      existing.metaAdAccountId=c.meta_ad_account_id;
+      existing.fechaInicio=c.fecha_inicio; existing.proximoVencimiento=c.proximo_vencimiento;
+      existing.prioridades=c.prioridades||[];
+      existing.directiva=c.directiva||{};
+    }
+  } else if(payload.eventType==='INSERT' && payload.new){
+    var c=payload.new;
+    if(!CLIENTES.find(function(x){return x.id===c.id;})){
+      CLIENTES.push({
+        id:c.id, nombre:c.nombre, rubro:c.rubro,
+        tipoCuenta:c.tipo_cuenta, modalidadContenido:c.modalidad_contenido,
+        estado:c.estado, fase:c.fase,
+        accountManager:c.account_manager, mediaBuyer:c.media_buyer,
+        presupuestoPauta:c.presupuesto_pauta, presupuestoServicio:c.presupuesto_servicio,
+        metaAdAccountId:c.meta_ad_account_id,
+        fechaInicio:c.fecha_inicio, proximoVencimiento:c.proximo_vencimiento,
+        color:c.color||'#e1bee7', avatarColor:c.avatar_color||'#7b1fa2',
+        prioridades:c.prioridades||[], directiva:c.directiva||{},
+        kpis:{}, kpisPrev:{}, alertas:[], topCreativos:[],
+        notas:[], docs:[], checklists:{},
+      });
+    }
+  } else if(payload.eventType==='DELETE' && payload.old){
+    CLIENTES=CLIENTES.filter(function(x){return x.id!==payload.old.id;});
+  }
+  safeRender();
+}
+
+function setupRealtime(){
+  sb.channel('mango-os-changes')
+    .on('postgres_changes', {event:'*', schema:'public', table:'tareas'}, handleTareaChange)
+    .on('postgres_changes', {event:'*', schema:'public', table:'notas'}, handleNotaChange)
+    .on('postgres_changes', {event:'*', schema:'public', table:'docs'}, handleDocChange)
+    .on('postgres_changes', {event:'*', schema:'public', table:'clientes'}, handleClienteChange)
+    .subscribe(function(status){
+      if(status === 'SUBSCRIBED'){
+        console.log('🟢 Realtime conectado — sincronización en vivo activa');
+      }
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // AUTH — login/logout con Google
 // ═══════════════════════════════════════════════════════════════════════════
 var CURRENT_SESSION = null;
@@ -707,7 +835,7 @@ var S={
   wf:'onboarding', tpl:'onboarding',
   filtro:'todos', modal:null,
   editandoId:null,
-  clienteTab:'performance',
+  clienteTab:'operativo',
   clienteWf:'onboarding',
   clienteTpl:'onboarding',
   taskFilter:'mias', // mias | todas | atrasadas | hoy | semana | hechas
@@ -906,7 +1034,7 @@ function userAvatar(name,size){
 // ═══════════════════════════════════════════════════════════════════════════
 // NAV
 // ═══════════════════════════════════════════════════════════════════════════
-function nav(p){S.page=p;S.clienteTab='performance';render();window.scrollTo(0,0);}
+function nav(p){S.page=p;S.clienteTab='operativo';render();window.scrollTo(0,0);}
 
 function buildNavItems(){
   var atrasadas=TASKS.filter(function(t){return t.dueño===S.currentUser && isOverdue(t);}).length;
@@ -1386,17 +1514,18 @@ function pgTareas(){
 // VISTA DE CLIENTE — el corazón del sistema
 // ═══════════════════════════════════════════════════════════════════════════
 function pgCliente(c){
+  // Si la pestaña actual es 'performance' (de versión anterior), redirigir a operativo
+  if(S.clienteTab==='performance') S.clienteTab='operativo';
   var tabs=[
-    {id:'performance',label:'Performance'},
     {id:'operativo',label:'Operativo'},
     {id:'ficha',label:'Ficha'},
     {id:'notas',label:'Notas y docs'},
   ];
   var body='';
-  if(S.clienteTab==='performance') body=clientePerformance(c);
-  else if(S.clienteTab==='operativo') body=clienteOperativo(c);
+  if(S.clienteTab==='operativo') body=clienteOperativo(c);
   else if(S.clienteTab==='ficha') body=clienteFicha(c);
   else if(S.clienteTab==='notas') body=clienteNotas(c);
+  else body=clienteOperativo(c);
 
   return '<div class="page">'
     +'<div style="display:flex;align-items:flex-start;gap:18px;margin-bottom:8px">'
@@ -2475,6 +2604,8 @@ async function boot(){
   document.getElementById('sbToggle').addEventListener('click', function(){S.sbOpen=!S.sbOpen; render();});
   showApp();
   render();
+  // Activar sincronización en vivo entre navegadores del equipo
+  setupRealtime();
 }
 
 // Listener para cambios de auth (logout en otra pestaña, etc.)
