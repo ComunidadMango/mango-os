@@ -2606,6 +2606,13 @@ async function boot(){
   render();
   // Activar sincronización en vivo entre navegadores del equipo
   setupRealtime();
+  // Abrir tarea directamente si el link viene con #tarea-{id}
+  var hash = window.location.hash;
+  if(hash && hash.startsWith('#tarea-')){
+    var taskId = hash.replace('#tarea-','');
+    var task = TASKS.find(function(t){return t.id === taskId;});
+    if(task) openModal('editar_tarea', taskId);
+  }
 }
 
 // Listener para cambios de auth (logout en otra pestaña, etc.)
