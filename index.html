@@ -604,7 +604,7 @@ async function bootData(){
     var itemsByTpl = {};
     (tplItemsR.data||[]).forEach(function(it){
       itemsByTpl[it.template_id] = itemsByTpl[it.template_id] || [];
-      itemsByTpl[it.template_id].push({_id:it.id,text:it.texto,cat:it.cat});
+      itemsByTpl[it.template_id].push({_id:it.id,text:it.texto,cat:it.cat,own:it.own||'',dia:it.dia||'',out:it.out||''});
     });
     TPLS = tplR.data.map(function(t){
       return {id:t.id,title:t.title,icon:t.icon,owner:t.owner,color:t.color,items:itemsByTpl[t.id]||[]};
