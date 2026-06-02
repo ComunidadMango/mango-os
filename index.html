@@ -775,6 +775,17 @@ function handleClienteChange(payload){
       existing.fechaInicio=c.fecha_inicio; existing.proximoVencimiento=c.proximo_vencimiento;
       existing.prioridades=c.prioridades||[];
       existing.directiva=c.directiva||{};
+      existing.color=c.color||existing.color;
+      existing.avatarColor=c.avatar_color||existing.avatarColor;
+      if(c.checklists){
+        existing.checklists=c.checklists;
+        Object.keys(c.checklists).forEach(function(k){
+          if(c.checklists[k]&&c.checklists[k].done) S.checked[k]=true;
+          else delete S.checked[k];
+        });
+        saveCheckedLocal();
+      }
+      render();
     }
   } else if(payload.eventType==='INSERT' && payload.new){
     var c=payload.new;
