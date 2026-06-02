@@ -18,7 +18,7 @@ body{background:var(--cream);color:var(--dark);font-family:'Raleway',sans-serif;
 .sb-head{padding:24px 20px 20px;border-bottom:1px solid rgba(245,243,239,.1);display:flex;align-items:center;gap:12px;min-height:80px}
 .sb-logo-txt{font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:#f5f3ef;letter-spacing:.05em;white-space:nowrap}
 #sidebar.closed .sb-logo-txt{display:none}
-.sb-logo-img{height:28px;width:auto;object-fit:contain;display:block;transition:opacity var(--tr)}
+.sb-logo-img{height:38px;width:auto;object-fit:contain;display:block;transition:opacity var(--tr)}
 #sidebar.closed .sb-logo-img{display:none}
 .sb-toggle{margin-left:auto;background:none;border:none;color:var(--gray-light);cursor:pointer;padding:6px 10px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:all var(--tr);flex-shrink:0;font-size:18px;line-height:1}
 .sb-toggle:hover{background:rgba(245,243,239,.08);color:var(--cream)}
@@ -167,6 +167,19 @@ body{background:var(--cream);color:var(--dark);font-family:'Raleway',sans-serif;
 ::-webkit-scrollbar-thumb{background:var(--gray-light);border-radius:3px}
 @media(max-width:1024px){.g3,.g4{grid-template-columns:1fr 1fr}.page{padding:30px 28px}}
 @media(max-width:768px){.g2,.g3,.g4,.f-row{grid-template-columns:1fr}.page{padding:24px 20px}.page-title{font-size:28px}#main{margin-left:var(--sw-c)!important}}
+body.dark-mode{--dark:#f0ede8;--cream:#1a1a19;--gray-bg:#141413;--gray-mid:#8a8a8a;--gray-light:#3a3a39}
+body.dark-mode .card{background:#242423;border-color:rgba(245,243,239,.06)}
+body.dark-mode .card-dark{background:#0e0e0d}
+body.dark-mode #sidebar{background:#111110}
+body.dark-mode #main{background:var(--gray-bg)}
+body.dark-mode .acc-row{background:#242423;border-color:rgba(245,243,239,.06)}
+body.dark-mode input,body.dark-mode select,body.dark-mode textarea{background:#2a2a29;border-color:rgba(245,243,239,.12);color:var(--dark)}
+body.dark-mode .modal-inner{background:#1e1e1d}
+.cl-owner{font-family:'Poppins',sans-serif;font-size:10px;padding:2px 8px;border-radius:12px;background:rgba(50,50,49,.08);color:var(--dark);flex-shrink:0;font-weight:600;white-space:nowrap}
+.cl-owner.cami{background:rgba(232,160,32,.15);color:#9a6400}
+.cl-owner.lu{background:rgba(21,101,192,.12);color:#1565c0}
+.cl-owner.matheo{background:rgba(46,125,50,.12);color:#2e7d32}
+.cl-owner.feli{background:rgba(123,31,162,.12);color:#7b1fa2}
 </style>
 </head>
 <body>
@@ -174,7 +187,7 @@ body{background:var(--cream);color:var(--dark);font-family:'Raleway',sans-serif;
 <!-- LOADING SCREEN -->
 <div id="loadingScreen" style="position:fixed;inset:0;background:#f5f3ef;display:flex;align-items:center;justify-content:center;z-index:9999">
   <div style="text-align:center">
-    <div style="font-family:'Oswald',sans-serif;font-size:32px;font-weight:700;color:#323231;letter-spacing:.05em;margin-bottom:14px">MANGO</div>
+    <img src="https://comunidadmango.com/img/logo-blanco.png" style="height:52px;width:auto;margin-bottom:20px;filter:brightness(0) saturate(100%)"/>
     <div style="width:32px;height:32px;border:3px solid rgba(50,50,49,.12);border-top-color:#323231;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto"></div>
     <div id="loadingMsg" style="margin-top:18px;font-family:'Poppins',sans-serif;font-size:12px;color:#737373">Cargando...</div>
   </div>
@@ -184,7 +197,7 @@ body{background:var(--cream);color:var(--dark);font-family:'Raleway',sans-serif;
 <!-- LOGIN SCREEN -->
 <div id="loginScreen" style="display:none;position:fixed;inset:0;background:#f5f3ef;align-items:center;justify-content:center;z-index:9998;padding:20px">
   <div style="max-width:400px;width:100%;text-align:center">
-    <div style="font-family:'Oswald',sans-serif;font-size:48px;font-weight:700;color:#323231;letter-spacing:.06em;margin-bottom:6px">MANGO</div>
+    <img src="https://comunidadmango.com/img/logo-blanco.png" style="height:64px;width:auto;margin-bottom:8px;filter:brightness(0) saturate(100%)"/>
     <div style="font-family:'Poppins',sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#737373;margin-bottom:48px">Agency OS</div>
 
     <div style="background:#fff;border:1px solid rgba(50,50,49,.08);border-radius:14px;padding:36px 28px">
@@ -209,6 +222,7 @@ body{background:var(--cream);color:var(--dark);font-family:'Raleway',sans-serif;
     <nav class="sb-nav" id="sbNav"></nav>
     <div class="sb-foot">
       <div id="sbUser"></div>
+      <button onclick="toggleDarkMode()" class="nav-btn" style="margin-top:8px;justify-content:center;opacity:.7" title="Modo oscuro / claro">&#9790;</button>
     </div>
   </aside>
   <main id="main"><div id="content"></div></main>
@@ -298,22 +312,32 @@ var WFS=[
 // TEMPLATES de checklist — recetas globales
 // ═══════════════════════════════════════════════════════════════════════════
 var TPLS=[
-  {id:'onboarding',title:'Onboarding',icon:'&#9672;',owner:'Lucía',color:'#323231',
+  {id:'onboarding',title:'Onboarding',icon:'&#9672;',owner:'Equipo',color:'#323231',
    items:[
-    {text:'Contrato firmado y archivado en Drive',cat:'Admin'},
-    {text:'Acceso a Meta Business Suite otorgado',cat:'Técnico'},
-    {text:'Acceso a cuenta publicitaria de Meta',cat:'Técnico'},
-    {text:'Pixel de Meta instalado y verificado',cat:'Técnico'},
-    {text:'Dominio verificado en Meta',cat:'Técnico'},
-    {text:'Brief de cliente completado',cat:'Estrategia'},
-    {text:'Manual de marca recibido',cat:'Creatividad'},
-    {text:'Referencias visuales obtenidas',cat:'Creatividad'},
-    {text:'Calendario editorial del primer mes definido',cat:'Contenido'},
-    {text:'Estrategia de pauta del primer mes aprobada',cat:'Pauta'},
-    {text:'Carpeta del cliente creada en Google Drive',cat:'Admin'},
-    {text:'Cliente dado de alta en ClickUp',cat:'Admin'},
-    {text:'Canal de Slack del cliente creado',cat:'Admin'},
-    {text:'Primera reunión de seguimiento agendada',cat:'Relación'},
+    {text:'Crear grupo interno del cliente en Google Chat',cat:'Fase 1',own:'Cami',dia:'Día 1',out:'Thread interno creado'},
+    {text:'Crear grupo de WhatsApp con cliente + equipo',cat:'Fase 1',own:'Cami',dia:'Día 1',out:'Grupo creado y nombrado'},
+    {text:'Diseñar imagen del grupo (logo Mango + logo cliente)',cat:'Fase 1',own:'Feli',dia:'Día 1',out:'Imagen subida al grupo'},
+    {text:'Presentación de equipo al cliente — Cami presenta, todos saludan',cat:'Fase 1',own:'Todos',dia:'Día 1',out:'Cliente conoce al equipo'},
+    {text:'Mandar el contrato al cliente para firma',cat:'Fase 1',own:'Cami',dia:'Día 2',out:'Contrato enviado'},
+    {text:'Enviar formulario de onboarding al cliente por mail',cat:'Fase 1',own:'Lu',dia:'Días 1–2',out:'Mail enviado, link en grupo'},
+    {text:'Pedir accesos: Business Manager, tienda online, dominio',cat:'Fase 1',own:'Matheo',dia:'Días 1–2',out:'Solicitud enviada al cliente'},
+    {text:'Sumar Mango al portfolio de Meta del cliente (ID 769175057790275)',cat:'Fase 1',own:'Matheo',dia:'Días 1–2',out:'Portfolio sumado'},
+    {text:'Verificar pixel, dominio y setup completo de la cuenta publicitaria',cat:'Fase 1',own:'Matheo',dia:'Días 1–2',out:'Setup técnico OK'},
+    {text:'Crear tarjeta del cliente en el dashboard de Mango',cat:'Fase 2',own:'Lu',dia:'Días 3–4',out:'Cliente visible en dashboard'},
+    {text:'Crear carpeta del cliente en Drive y compartir link en WhatsApp',cat:'Fase 2',own:'Lu',dia:'Días 3–4',out:'Carpeta creada + link compartido'},
+    {text:'Reunión de presentación de equipo por Meet (onboarding técnico)',cat:'Fase 2',own:'Cami',dia:'Días 3–4',out:'Reunión realizada'},
+    {text:'Crear proyecto en Claude para el cliente y cargar toda la documentación',cat:'Fase 3',own:'Lu',dia:'Días 5–6',out:'Proyecto Claude listo'},
+    {text:'Diseñar la estrategia del cliente (ángulos, audiencias, roadmap 30/60/90)',cat:'Fase 3',own:'Lu',dia:'Días 5–7',out:'Estrategia documentada en Drive'},
+    {text:'Reunión estratégica por Meet — presentar estrategia y pasos 30/60/90',cat:'Fase 3',own:'Cami+Lu+Matheo',dia:'Día 7',out:'Estrategia aprobada por cliente'},
+    {text:'Definir estructura publicitaria (campañas, inversión, volumen de creativos)',cat:'Fase 4',own:'Cami+Matheo',dia:'Días 8–9',out:'Estructura confirmada'},
+    {text:'Armar guiones para primera jornada de grabación',cat:'Fase 4',own:'Lu',dia:'Días 8–10',out:'Guiones aprobados'},
+    {text:'Agendar jornada de grabación con el cliente',cat:'Fase 4',own:'Lu',dia:'Día 10',out:'Fecha confirmada con cliente'},
+    {text:'Jornada de grabación en local/locación',cat:'Fase 5',own:'Lu',dia:'Día 11',out:'Crudos en Drive del cliente'},
+    {text:'Postear handoff en thread del cliente: "Crudos listos. @Feli todo tuyo"',cat:'Fase 5',own:'Lu',dia:'Día 11',out:'Handoff confirmado en Google Chat'},
+    {text:'Edición de reels, carruseles y estáticas según el plan',cat:'Fase 5',own:'Feli',dia:'Días 12–14',out:'Editados en Drive'},
+    {text:'Postear handoff: "Editados listos. @Matheo todo tuyo"',cat:'Fase 5',own:'Feli',dia:'Día 14',out:'Handoff confirmado en Google Chat'},
+    {text:'Cargar creativos en BM, configurar y largar primeras campañas de testeo',cat:'Fase 5',own:'Matheo',dia:'Día 15',out:'Campañas activas en Meta BM'},
+    {text:'Notificar al cliente que las campañas están activas y cerrar onboarding',cat:'Fase 5',own:'Lu',dia:'Día 15',out:'Cliente informado'},
    ]},
   {id:'lanzamiento',title:'Lanzamiento de Campaña',icon:'&#9658;',owner:'Camila + Matheo',color:'#e8a020',
    items:[
@@ -514,6 +538,7 @@ var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // ═══════════════════════════════════════════════════════════════════════════
 var CLIENTES = [];
 var TASKS = [];
+var TRASH = [];
 var MANGO_INFO = JSON.parse(JSON.stringify(MANGO_INFO_DEFAULT));
 // TEAM, WFS, TPLS quedan con sus defaults hasta que se carguen de Supabase
 
@@ -627,7 +652,7 @@ async function bootData(){
       kpisRows: k.rows, // por si en el futuro queremos mostrar gráfico de tendencia
       alertas:c.alertas||[], topCreativos:c.top_creativos||[],
       notas:notasByCliente[c.id]||[], docs:docsByCliente[c.id]||[],
-      checklists:{}
+      checklists:c.checklists||{}
     };
   });
 
@@ -652,6 +677,9 @@ async function bootData(){
       metodo:mangoR.data.metodo||[],
     };
   }
+  CLIENTES.forEach(function(c){
+    if(c.checklists)Object.keys(c.checklists).forEach(function(k){if(c.checklists[k]&&c.checklists[k].done)S.checked[k]=true;});
+  });
 }
 
 function setLoadingMsg(m){var el=document.getElementById('loadingMsg');if(el)el.textContent=m;}
@@ -762,7 +790,7 @@ function handleClienteChange(payload){
         color:c.color||'#e1bee7', avatarColor:c.avatar_color||'#7b1fa2',
         prioridades:c.prioridades||[], directiva:c.directiva||{},
         kpis:{}, kpisPrev:{}, alertas:[], topCreativos:[],
-        notas:[], docs:[], checklists:{},
+        notas:[], docs:[], checklists:c.checklists||{},
       });
     }
   } else if(payload.eventType==='DELETE' && payload.old){
@@ -831,6 +859,9 @@ function showApp(){
 // ═══════════════════════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════════════════════
+function toggleDarkMode(){document.body.classList.toggle('dark-mode');localStorage.setItem('mango_dark',document.body.classList.contains('dark-mode')?'1':'0');}
+(function(){if(localStorage.getItem('mango_dark')==='1')document.body.classList.add('dark-mode');})();
+
 var S={
   page:'dashboard', sbOpen:true,
   role:'camila', roleTab:'diarias',
@@ -842,6 +873,7 @@ var S={
   clienteTpl:'onboarding',
   taskFilter:'mias', // mias | todas | atrasadas | hoy | semana | hechas
   selectedTasks:[],
+  searchQuery:'',
   currentUser:'Camila', // se sobreescribe con el nombre del usuario logueado en bootSession
   checked:loadCheckedLocal(),
 };
@@ -1064,6 +1096,7 @@ function buildNavItems(){
   items.push({sec:'Mango'});
   items.push({id:'mango_identidad',icon:'&#9670;',label:'Sobre Mango'});
   items.push({id:'mango_metodo',icon:'&#9678;',label:'Método MANGO'});
+  items.push({id:'search',icon:'&#128269;',label:'Buscar'});
   return items;
 }
 
@@ -1107,6 +1140,7 @@ function render(){
   else if(S.page==='cuentas') html=pgCuentas();
   else if(S.page==='mango_identidad') html=pgMangoIdentidad();
   else if(S.page==='mango_metodo') html=pgMangoMetodo();
+  else if(S.page==='search') html=pgSearch();
   else if(S.page.indexOf('cliente_')===0){
     var id=S.page.replace('cliente_','');
     var c=findCliente(id);
@@ -1114,11 +1148,49 @@ function render(){
   }
   document.getElementById('content').innerHTML=html+renderModal();
   saveState();
+  if(S.page==='dashboard') startClock();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PAGES
 // ═══════════════════════════════════════════════════════════════════════════
+function pgSearch(){
+  var q=(S.searchQuery||'').toLowerCase().trim();
+  var html='<div class="page"><div class="page-eye">Global</div><h1 class="page-title">Buscar</h1>'
+    +'<div style="margin-bottom:28px"><input id="globalSearch" type="text" value="'+(S.searchQuery||'').replace(/"/g,'&quot;')+'" placeholder="Buscar clientes, tareas, notas..." style="width:100%;padding:12px 16px;border:2px solid rgba(50,50,49,.2);border-radius:10px;font-family:\'Raleway\',sans-serif;font-size:15px;background:#fff;color:var(--dark)" oninput="S.searchQuery=this.value;render()"/></div>';
+  if(!q){html+='<div class="empty-state"><div class="empty-state-icon">&#128269;</div><div class="empty-state-txt">Escribí algo para buscar.</div></div></div>';return html;}
+  var rClientes=CLIENTES.filter(function(c){return (c.nombre+' '+c.rubro).toLowerCase().indexOf(q)>-1;});
+  var rTareas=TASKS.filter(function(t){return (t.titulo+' '+(t.descripcion||'')).toLowerCase().indexOf(q)>-1;});
+  var rNotas=[];
+  CLIENTES.forEach(function(c){(c.notas||[]).forEach(function(n){if((n.texto||'').toLowerCase().indexOf(q)>-1)rNotas.push({nota:n,cliente:c});});});
+  var total=rClientes.length+rTareas.length+rNotas.length;
+  if(total===0){html+='<div class="empty-state"><div class="empty-state-icon">&#128269;</div><div class="empty-state-txt">Sin resultados para "'+S.searchQuery+'".</div></div></div>';return html;}
+  if(rClientes.length){
+    html+='<div class="section-lbl">Clientes ('+rClientes.length+')</div><div style="margin-bottom:24px">'
+      +rClientes.map(function(c){return '<div class="acc-row" onclick="nav(\'cliente_'+c.id+'\')" style="cursor:pointer">'
+        +'<div style="width:40px;height:40px;border-radius:10px;background:'+c.color+';color:'+c.avatarColor+';display:flex;align-items:center;justify-content:center;font-family:\'Oswald\',sans-serif;font-size:13px;font-weight:700;flex-shrink:0">'+c.nombre.substring(0,2).toUpperCase()+'</div>'
+        +'<div style="flex:1"><div style="font-weight:600;font-size:14px">'+c.nombre+'</div><div style="font-size:11px;color:var(--gray-mid)">'+c.rubro+'</div></div>'
+        +'<div style="color:var(--gray-light)">→</div></div>';}).join('')+'</div>';
+  }
+  if(rTareas.length){
+    html+='<div class="section-lbl">Tareas ('+rTareas.length+')</div><div style="margin-bottom:24px">'+rTareas.map(function(t){return taskRow(t,false);}).join('')+'</div>';
+  }
+  if(rNotas.length){
+    html+='<div class="section-lbl">Notas ('+rNotas.length+')</div><div>'
+      +rNotas.map(function(x){return '<div class="card" style="margin-bottom:8px;cursor:pointer;padding:14px 16px" onclick="nav(\'cliente_'+x.cliente.id+'\');S.clienteTab=\'notas\';render()">'
+        +'<div style="font-size:11px;color:var(--gray-mid);margin-bottom:4px">'+x.cliente.nombre+' · '+x.nota.autor+' · '+x.nota.fecha+'</div>'
+        +'<div style="font-size:13px;line-height:1.5">'+x.nota.texto.substring(0,200)+(x.nota.texto.length>200?'...':'')+'</div></div>';}).join('')+'</div>';
+  }
+  html+='</div>';
+  return html;
+}
+
+function saludoGenero(name){
+  var masculinos=['matheo','mateo','santiago','nicolas','martin','gabriel','diego'];
+  var first=(name||'').split(' ')[0].toLowerCase();
+  return masculinos.indexOf(first)>-1?'Bienvenido':'Bienvenida';
+}
+
 function pgDashboard(){
   var activos=CLIENTES.filter(function(c){return c.estado==='activo';}).length;
   var onb=CLIENTES.filter(function(c){return c.estado==='onboarding';}).length;
@@ -1134,8 +1206,8 @@ function pgDashboard(){
   ];
 
   return '<div class="page">'
-    +'<div class="page-eye">Comunidad Mango · OS Interno</div>'
-    +'<h1 class="page-title">Bienvenida.</h1>'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:4px"><div class="page-eye">Comunidad Mango · OS Interno</div><div style="text-align:right"><div style="font-family:\'Oswald\',sans-serif;font-size:28px;font-weight:600;color:var(--dark);line-height:1" id="liveClock">--:--:--</div><div style="font-family:\'Poppins\',sans-serif;font-size:11px;color:var(--gray-mid);margin-top:2px" id="liveDate"></div></div></div>'
+    +'<h1 class="page-title">'+saludoGenero(S.currentUser)+', '+S.currentUser.split(' ')[0]+'.</h1>'
     +'<p class="page-sub">Tu sistema de operaciones. Cada cliente, cada proceso y cada rol en un solo lugar. Basado en el Método MANGO.</p>'
     +'<div class="g4" style="margin-bottom:36px">'
     +stats.map(function(s){return '<div class="card" style="padding:18px 20px">'
@@ -1157,8 +1229,30 @@ function pgDashboard(){
     +'<div style="font-size:24px;margin-bottom:6px">+</div>'
     +'<div style="font-size:13px;font-weight:600">Agregar cliente</div></div>'
     +'</div>'
-    +'<div class="card card-dark" style="padding:32px 36px"><div style="font-family:\'DM Serif Display\',serif;font-size:20px;font-style:italic;color:var(--accent-light);margin-bottom:14px;line-height:1.5">&ldquo;Los negocios que ya funcionan merecen crecer con orden,<br>no con suerte.&rdquo;</div>'
+    +'<div class="g2" style="margin-bottom:24px">'
+    +'<div class="card"><div class="section-lbl" style="margin-bottom:14px">Esta semana</div>'
+    +(function(){
+      var lunes=new Date();lunes.setHours(0,0,0,0);lunes.setDate(lunes.getDate()-((lunes.getDay()+6)%7));
+      var domingo=new Date(lunes);domingo.setDate(lunes.getDate()+6);domingo.setHours(23,59,59,999);
+      var hechas=TASKS.filter(function(t){if(t.estado!=='hecho'||!t.completedAt)return false;var d=new Date(t.completedAt);return d>=lunes&&d<=domingo;}).length;
+      var vencenSemana=TASKS.filter(function(t){var d=daysUntil(t.deadline);return d!==null&&d>=0&&d<=7&&t.estado!=='hecho';}).length;
+      var atrasadas=TASKS.filter(isOverdue).length;
+      return '<div style="display:flex;flex-direction:column;gap:0">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid rgba(50,50,49,.06)">'
+        +'<span style="font-family:\'Poppins\',sans-serif;font-size:13px;color:var(--gray-mid)">Completadas esta semana</span>'
+        +'<span style="font-family:\'Oswald\',sans-serif;font-size:22px;font-weight:600;color:var(--success)">'+hechas+'</span></div>'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid rgba(50,50,49,.06)">'
+        +'<span style="font-family:\'Poppins\',sans-serif;font-size:13px;color:var(--gray-mid)">Vencen esta semana</span>'
+        +'<span style="font-family:\'Oswald\',sans-serif;font-size:22px;font-weight:600;color:var(--accent)">'+vencenSemana+'</span></div>'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0">'
+        +'<span style="font-family:\'Poppins\',sans-serif;font-size:13px;color:var(--gray-mid)">Atrasadas</span>'
+        +'<span style="font-family:\'Oswald\',sans-serif;font-size:22px;font-weight:600;color:'+(atrasadas>0?'var(--danger)':'var(--success)')+'">'+atrasadas+'</span></div>'
+        +'</div>';
+    })()
+    +'</div>'
+    +'<div class="card card-dark" style="padding:32px 36px;display:flex;flex-direction:column;justify-content:center"><div style="font-family:\'DM Serif Display\',serif;font-size:20px;font-style:italic;color:var(--accent-light);margin-bottom:14px;line-height:1.5">&ldquo;Los negocios que ya funcionan merecen crecer con orden,<br>no con suerte.&rdquo;</div>'
     +'<div style="font-family:\'Poppins\',sans-serif;font-size:12px;color:var(--gray-mid)">— Comunidad Mango</div></div>'
+    +'</div>'
     +'</div>';
 }
 
@@ -1515,6 +1609,15 @@ function pgTareas(){
     +'</div>'
     +'</div>'
     +(lista.length===0?'<div class="empty-state"><div class="empty-state-icon">&#9776;</div><div class="empty-state-txt">No hay tareas con ese filtro.</div></div>':lista.map(function(t){return taskRow(t,true);}).join(''))
+    +(TRASH.length>0
+      ?'<div style="margin-top:40px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="section-lbl" style="margin-bottom:0;color:var(--danger)">&#128465; Papelera ('+TRASH.length+')</div><button class="btn btn-danger btn-sm" onclick="emptyTrash()">Vaciar</button></div>'
+      +TRASH.map(function(t){var c=t.clienteId?findCliente(t.clienteId):null;return '<div style="background:#fff;border:1px solid rgba(198,40,40,.15);border-left:3px solid #c62828;border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:14px;opacity:.75">'
+        +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--gray-mid);text-decoration:line-through">'+t.titulo+'</div>'
+        +'<div style="font-family:\'Poppins\',sans-serif;font-size:11px;color:var(--gray-mid);margin-top:2px">'+(c?c.nombre:'Mango interno')+'</div></div>'
+        +'<button class="btn btn-ghost btn-sm" onclick="restoreTask(\''+t.id+'\')">Restaurar</button>'
+        +'</div>';}).join('')
+      +'</div>'
+      :'')
     +'</div>';
 }
 
@@ -1767,9 +1870,16 @@ function clienteOperativo(c){
     +tpl.items.map(function(item,i){
       var k=prefix+i;
       var isDone=!!S.checked[k];
-      return '<div class="cl-item'+(isDone?' done':'')+'" onclick="toggleCL(\''+k+'\')">'
+      var checkInfo=c.checklists&&c.checklists[k];
+      var ownerKey=item.own?(item.own.toLowerCase().split('+')[0].trim()):'' ;
+      var ownerClass=ownerKey==='cami'?'cami':ownerKey==='lu'?'lu':ownerKey==='matheo'?'matheo':ownerKey==='feli'?'feli':'';
+      return '<div class="cl-item'+(isDone?' done':'')+'" onclick="toggleCL(\''+k+'\',\''+c.id+'\')">'
         +'<div class="cl-box">'+(isDone?'&#10003;':'')+'</div>'
-        +'<span class="cl-text">'+item.text+'</span>'
+        +'<div style="flex:1;min-width:0"><span class="cl-text">'+item.text+'</span>'
+        +(item.dia?'<div style="font-family:\'Poppins\',sans-serif;font-size:10px;color:var(--gray-mid);margin-top:2px">'+item.dia+(item.out?' · '+item.out:'')+'</div>':'')
+        +(isDone&&checkInfo&&checkInfo.by?'<div style="font-family:\'Poppins\',sans-serif;font-size:10px;color:var(--success);margin-top:2px">&#10003; '+checkInfo.by+(checkInfo.at?' · '+new Date(checkInfo.at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'')+'</div>':'')
+        +'</div>'
+        +(item.own?'<span class="cl-owner '+ownerClass+'">'+item.own+'</span>':'')
         +'<span class="cl-cat">'+item.cat+'</span></div>';}).join('')
     +'</div>';
 
@@ -2172,13 +2282,38 @@ async function deleteSelectedTasks(){
   var ids=S.selectedTasks.slice();
   if(!ids.length) return;
   var plural=ids.length>1;
-  if(!confirm('¿Eliminar '+ids.length+' tarea'+(plural?'s':'')+' seleccionada'+(plural?'s':'')+' ? No se puede deshacer.')) return;
+  if(!confirm('¿Mover '+ids.length+' tarea'+(plural?'s':'')+' a la papelera?')) return;
+  var moved=[];
   for(var i=0;i<ids.length;i++){
-    var {error} = await sb.from('tareas').delete().eq('id', ids[i]);
-    if(error){sbError('Error al eliminar tarea', error);return;}
-    TASKS=TASKS.filter(function(t){return t.id!==ids[i];});
+    var t=findTask(ids[i]);
+    if(t){TRASH.push(Object.assign({},t,{deletedAt:new Date().toISOString()}));moved.push(ids[i]);}
   }
+  var {error}=await sb.from('tareas').delete().in('id',moved);
+  if(error){sbError('Error al eliminar tareas',error);TRASH=TRASH.filter(function(t){return moved.indexOf(t.id)===-1;});return;}
+  TASKS=TASKS.filter(function(t){return moved.indexOf(t.id)===-1;});
   S.selectedTasks=[];
+  render();
+}
+
+async function restoreTask(id){
+  var t=TRASH.find(function(x){return x.id===id;});
+  if(!t)return;
+  var dbRow={
+    titulo:t.titulo,descripcion:t.descripcion||'',cliente_id:t.clienteId||null,
+    dueño:Array.isArray(t.dueño)?t.dueño:[t.dueño],deadline:t.deadline||null,
+    estado:'pendiente',prioridad:t.prioridad||'media',creado_por:t.creadoPor||S.currentUser,
+  };
+  var {data,error}=await sb.from('tareas').insert(dbRow).select().single();
+  if(error){sbError('Error al restaurar tarea',error);return;}
+  TRASH=TRASH.filter(function(x){return x.id!==id;});
+  TASKS.push(Object.assign({},t,{id:data.id,estado:'pendiente'}));
+  render();
+}
+
+function emptyTrash(){
+  if(!TRASH.length)return;
+  if(!confirm('¿Vaciar la papelera permanentemente? No se puede deshacer.'))return;
+  TRASH=[];
   render();
 }
 
@@ -2193,7 +2328,22 @@ async function toggleTaskDone(id){
   render();
 }
 
-function toggleCL(k){S.checked[k]=!S.checked[k];render();}
+async function toggleCL(k, clienteId){
+  var nuevoVal=!S.checked[k];
+  S.checked[k]=nuevoVal;
+  saveCheckedLocal();
+  render();
+  if(clienteId){
+    var c=findCliente(clienteId);
+    if(c){
+      var cls=Object.assign({},c.checklists||{});
+      if(nuevoVal){cls[k]={done:true,by:S.currentUser,at:new Date().toISOString()};}
+      else{delete cls[k];}
+      c.checklists=cls;
+      await sb.from('clientes').update({checklists:cls}).eq('id',clienteId);
+    }
+  }
+}
 function resetCheckClient(clienteId,tplId){
   if(!confirm('¿Reiniciar este checklist? Se desmarcan todos los items.'))return;
   var prefix='cl_'+clienteId+'_'+tplId+'_';
@@ -2654,6 +2804,28 @@ sb.auth.onAuthStateChange(function(event, session){
     showLogin();
   }
 });
+
+var _clockInt=null;
+function tickClock(){
+  var el=document.getElementById('liveClock');
+  if(!el){clearInterval(_clockInt);_clockInt=null;return;}
+  var now=new Date();
+  var pad=function(n){return n.toString().padStart(2,'0');};
+  el.textContent=pad(now.getHours())+':'+pad(now.getMinutes())+':'+pad(now.getSeconds());
+  var dateEl=document.getElementById('liveDate');
+  if(dateEl){
+    var dias=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    var meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    dateEl.textContent=dias[now.getDay()]+', '+now.getDate()+' de '+meses[now.getMonth()];
+  }
+}
+function startClock(){
+  if(_clockInt)clearInterval(_clockInt);
+  tickClock();
+  _clockInt=setInterval(tickClock,1000);
+}
+
+document.addEventListener('keydown',function(e){if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();nav('search');setTimeout(function(){var el=document.getElementById('globalSearch');if(el)el.focus();},50);}});
 
 boot();
 </script>
