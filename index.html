@@ -895,7 +895,7 @@ function handleChecklistBroadcast(payload){
     c.checklists[d.k]=d.done?{done:true,by:d.by,at:new Date().toISOString()}:{done:false};
   }
   saveCheckedLocal();
-  render();
+  _updateChecklistDOM(d.k, d.clienteId, d.done);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1983,19 +1983,19 @@ function clienteOperativo(c){
     +'<div style="font-family:\'Poppins\',sans-serif;font-size:11px;color:var(--gray-mid)">'+tpl.owner+'</div></div>'
     +'<button onclick="resetCheckClient(\''+c.id+'\',\''+S.clienteTpl+'\')" class="btn btn-ghost btn-sm">Reset</button>'
     +'</div>'
-    +'<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-family:\'Poppins\',sans-serif;font-size:12px;color:var(--gray-mid)">'+done+' de '+tpl.items.length+'</span><span style="font-family:\'Oswald\',sans-serif;font-size:14px">'+pct+'%</span></div>'
-    +'<div class="prog-wrap"><div class="prog-bar" style="width:'+pct+'%;background:'+tpl.color+'"></div></div>'
+    +'<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span id="clcount_'+c.id+'_'+S.clienteTpl+'" style="font-family:\'Poppins\',sans-serif;font-size:12px;color:var(--gray-mid)">'+done+' de '+tpl.items.length+'</span><span id="clpct_'+c.id+'_'+S.clienteTpl+'" style="font-family:\'Oswald\',sans-serif;font-size:14px">'+pct+'%</span></div>'
+    +'<div class="prog-wrap"><div id="clprogbar_'+c.id+'_'+S.clienteTpl+'" class="prog-bar" style="width:'+pct+'%;background:'+tpl.color+'"></div></div>'
     +tpl.items.map(function(item,i){
       var k=prefix+i;
       var isDone=!!S.checked[k];
       var checkInfo=c.checklists&&c.checklists[k];
       var ownerKey=item.own?(item.own.toLowerCase().split('+')[0].trim()):'' ;
       var ownerClass=ownerKey==='cami'?'cami':ownerKey==='lu'?'lu':ownerKey==='matheo'?'matheo':ownerKey==='feli'?'feli':'';
-      return '<div class="cl-item'+(isDone?' done':'')+'" onclick="toggleCL(\''+k+'\',\''+c.id+'\')">'
+      return '<div id="clitem_'+k+'" class="cl-item'+(isDone?' done':'')+'" onclick="toggleCL(\''+k+'\',\''+c.id+'\')">'
         +'<div class="cl-box">'+(isDone?'&#10003;':'')+'</div>'
-        +'<div style="flex:1;min-width:0"><span class="cl-text">'+item.text+'</span>'
+        +'<div class="cl-textwrap" style="flex:1;min-width:0"><span class="cl-text">'+item.text+'</span>'
         +(item.dia?'<div style="font-family:\'Poppins\',sans-serif;font-size:10px;color:var(--gray-mid);margin-top:2px">'+item.dia+(item.out?' · '+item.out:'')+'</div>':'')
-        +(isDone&&checkInfo&&checkInfo.by?'<div style="font-family:\'Poppins\',sans-serif;font-size:10px;color:var(--success);margin-top:2px">&#10003; '+checkInfo.by+(checkInfo.at?' · '+new Date(checkInfo.at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'')+'</div>':'')
+        +(isDone&&checkInfo&&checkInfo.by?'<div class="cl-doneinfo" style="font-family:\'Poppins\',sans-serif;font-size:10px;color:var(--success);margin-top:2px">&#10003; '+checkInfo.by+(checkInfo.at?' · '+new Date(checkInfo.at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'')+'</div>':'')
         +'</div>'
         +(item.own?'<span class="cl-owner '+ownerClass+'">'+item.own+'</span>':'')
         +'<span class="cl-cat">'+item.cat+'</span></div>';}).join('')
@@ -2450,26 +2450,68 @@ async function toggleTaskDone(id){
   render();
 }
 
+function _updateChecklistDOM(k, clienteId, nuevoVal){
+  var itemEl=document.getElementById('clitem_'+k);
+  if(!itemEl) return;
+  if(nuevoVal) itemEl.classList.add('done'); else itemEl.classList.remove('done');
+  var box=itemEl.querySelector('.cl-box');
+  if(box) box.innerHTML=nuevoVal?'&#10003;':'';
+  var wrap=itemEl.querySelector('.cl-textwrap');
+  if(wrap){
+    var existing=wrap.querySelector('.cl-doneinfo');
+    if(nuevoVal){
+      var c2=findCliente(clienteId);
+      var ci=c2&&c2.checklists&&c2.checklists[k];
+      var by=ci&&ci.by?ci.by:(S.currentUser||'');
+      var at=ci&&ci.at?ci.at:new Date().toISOString();
+      var ds=new Date(at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'});
+      var doneHtml='&#10003; '+by+' · '+ds;
+      if(!existing){
+        var div=document.createElement('div');
+        div.className='cl-doneinfo';
+        div.style.cssText="font-family:'Poppins',sans-serif;font-size:10px;color:var(--success);margin-top:2px";
+        div.innerHTML=doneHtml;
+        wrap.appendChild(div);
+      } else { existing.innerHTML=doneHtml; }
+    } else { if(existing) existing.remove(); }
+  }
+  var matchedTpl=null;
+  for(var t=0;t<TPLS.length;t++){
+    if(k.indexOf('cl_'+clienteId+'_'+TPLS[t].id+'_')===0){matchedTpl=TPLS[t];break;}
+  }
+  if(!matchedTpl) return;
+  var tplPfx='cl_'+clienteId+'_'+matchedTpl.id+'_';
+  var total=matchedTpl.items.length;
+  var done=0;
+  for(var i=0;i<total;i++){if(S.checked[tplPfx+i]) done++;}
+  var pct=total?Math.round(done/total*100):0;
+  var countEl=document.getElementById('clcount_'+clienteId+'_'+matchedTpl.id);
+  if(countEl) countEl.textContent=done+' de '+total;
+  var pctEl=document.getElementById('clpct_'+clienteId+'_'+matchedTpl.id);
+  if(pctEl) pctEl.textContent=pct+'%';
+  var barEl=document.getElementById('clprogbar_'+clienteId+'_'+matchedTpl.id);
+  if(barEl) barEl.style.width=pct+'%';
+}
+
 async function toggleCL(k, clienteId){
   var nuevoVal=!S.checked[k];
-  S.checked[k]=nuevoVal;
+  if(nuevoVal) S.checked[k]=true; else delete S.checked[k];
   saveCheckedLocal();
-  render();
-  if(clienteId){
-    var c=findCliente(clienteId);
-    if(c){
-      var cls=Object.assign({},c.checklists||{});
-      if(nuevoVal){cls[k]={done:true,by:S.currentUser,at:new Date().toISOString()};}
-      else{cls[k]={done:false};}
-      c.checklists=cls;
-      var {error:clErr}=await sb.from('clientes').update({checklists:cls}).eq('id',clienteId);
-      if(clErr) console.error('Error al guardar checklist en Supabase:', clErr);
-      // Broadcast inmediato a todos los demás usuarios conectados
-      if(_rtChannel) _rtChannel.send({
-        type:'broadcast', event:'checklist',
-        payload:{k:k, clienteId:clienteId, done:nuevoVal, by:S.currentUser}
-      });
-    }
+  var c=clienteId?findCliente(clienteId):null;
+  if(c){
+    var cls=Object.assign({},c.checklists||{});
+    if(nuevoVal){cls[k]={done:true,by:S.currentUser,at:new Date().toISOString()};}
+    else{cls[k]={done:false};}
+    c.checklists=cls;
+  }
+  _updateChecklistDOM(k, clienteId, nuevoVal);
+  if(c){
+    var {error:clErr}=await sb.from('clientes').update({checklists:c.checklists}).eq('id',clienteId);
+    if(clErr) console.error('Error al guardar checklist en Supabase:', clErr);
+    if(_rtChannel) _rtChannel.send({
+      type:'broadcast', event:'checklist',
+      payload:{k:k, clienteId:clienteId, done:nuevoVal, by:S.currentUser}
+    });
   }
 }
 async function resetCheckClient(clienteId,tplId){
