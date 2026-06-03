@@ -575,6 +575,7 @@ var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 var CLIENTES = [];
 var TASKS = [];
 var TRASH = [];
+var _rtChannel = null;
 var MANGO_INFO = JSON.parse(JSON.stringify(MANGO_INFO_DEFAULT));
 // TEAM, WFS, TPLS quedan con sus defaults hasta que se carguen de Supabase
 
@@ -870,16 +871,31 @@ function handleClienteChange(payload){
 }
 
 function setupRealtime(){
-  sb.channel('mango-os-changes')
+  _rtChannel = sb.channel('mango-os-changes')
     .on('postgres_changes', {event:'*', schema:'public', table:'tareas'}, handleTareaChange)
     .on('postgres_changes', {event:'*', schema:'public', table:'notas'}, handleNotaChange)
     .on('postgres_changes', {event:'*', schema:'public', table:'docs'}, handleDocChange)
     .on('postgres_changes', {event:'*', schema:'public', table:'clientes'}, handleClienteChange)
+    .on('broadcast', {event:'checklist'}, handleChecklistBroadcast)
     .subscribe(function(status){
       if(status === 'SUBSCRIBED'){
         console.log('🟢 Realtime conectado — sincronización en vivo activa');
       }
     });
+}
+
+function handleChecklistBroadcast(payload){
+  var d=payload.payload;
+  if(!d||!d.k||!d.clienteId) return;
+  if(d.done) S.checked[d.k]=true;
+  else delete S.checked[d.k];
+  var c=findCliente(d.clienteId);
+  if(c){
+    c.checklists=c.checklists||{};
+    c.checklists[d.k]=d.done?{done:true,by:d.by,at:new Date().toISOString()}:{done:false};
+  }
+  saveCheckedLocal();
+  render();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2448,6 +2464,11 @@ async function toggleCL(k, clienteId){
       c.checklists=cls;
       var {error:clErr}=await sb.from('clientes').update({checklists:cls}).eq('id',clienteId);
       if(clErr) console.error('Error al guardar checklist en Supabase:', clErr);
+      // Broadcast inmediato a todos los demás usuarios conectados
+      if(_rtChannel) _rtChannel.send({
+        type:'broadcast', event:'checklist',
+        payload:{k:k, clienteId:clienteId, done:nuevoVal, by:S.currentUser}
+      });
     }
   }
 }
