@@ -708,10 +708,16 @@ async function bootData(){
       metodo:mangoR.data.metodo||[],
     };
   }
-  // Cargar estado del checklist desde Supabase (fuente de verdad, ignora localStorage stale)
-  S.checked={};
+  // Aplicar checklists desde Supabase.
+  // Si Supabase tiene datos para un cliente → es fuente de verdad (pisa localStorage).
+  // Si Supabase no tiene datos → localStorage queda como fallback.
   CLIENTES.forEach(function(c){
-    if(c.checklists)Object.keys(c.checklists).forEach(function(k){if(c.checklists[k]&&c.checklists[k].done)S.checked[k]=true;});
+    if(!c.checklists) return;
+    var keys=Object.keys(c.checklists);
+    if(!keys.length) return;
+    var prefix='cl_'+c.id+'_';
+    Object.keys(S.checked).forEach(function(k){if(k.indexOf(prefix)===0) delete S.checked[k];});
+    keys.forEach(function(k){if(c.checklists[k]&&c.checklists[k].done) S.checked[k]=true;});
   });
   saveCheckedLocal();
 }
@@ -2440,7 +2446,8 @@ async function toggleCL(k, clienteId){
       if(nuevoVal){cls[k]={done:true,by:S.currentUser,at:new Date().toISOString()};}
       else{cls[k]={done:false};}
       c.checklists=cls;
-      await sb.from('clientes').update({checklists:cls}).eq('id',clienteId);
+      var {error:clErr}=await sb.from('clientes').update({checklists:cls}).eq('id',clienteId);
+      if(clErr) console.error('Error al guardar checklist en Supabase:', clErr);
     }
   }
 }
