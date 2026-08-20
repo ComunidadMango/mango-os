@@ -6,6 +6,7 @@ import TopBar from "./TopBar";
 import Manguito from "./Manguito";
 import PanelNotificaciones from "./PanelNotificaciones";
 import DrawerNuevaPagina from "./DrawerNuevaPagina";
+import BannerBienvenida from "./BannerBienvenida";
 import { type PaginaCustom } from "@/lib/paginas";
 import { usePersonas } from "@/lib/usePersonas";
 
@@ -67,7 +68,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar onAbrirNotificaciones={() => setNotisAbiertas(true)} sinLeer={sinLeer} />
-        <main className="flex-1 overflow-y-auto px-7 pb-24 pt-6">{children}</main>
+        <main className="flex-1 overflow-y-auto px-7 pb-24 pt-6">
+          <BannerBienvenida />
+          {children}
+        </main>
       </div>
       {/* <Manguito /> */}
       <PanelNotificaciones
