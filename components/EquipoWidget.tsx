@@ -62,9 +62,14 @@ function Avatar({
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Lucía deja el equipo el 31/8/2026: no debe verse en "El equipo hoy" desde
+// ya, aunque sigue existiendo como persona (puede tener tareas asignadas
+// hasta esa fecha). Sacar esta línea después del 31/8.
+const OCULTOS_DE_HOY = new Set(["lucia"]);
+
 export default function EquipoWidget() {
   const usuario = useUsuarioActual();
-  const equipo = usePersonas();
+  const equipo = usePersonas().filter(p => !OCULTOS_DE_HOY.has(p.id));
   const { data: session } = useSession();
   const fotoActual = session?.user?.image ?? null;
 
