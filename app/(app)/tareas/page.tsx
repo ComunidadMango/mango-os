@@ -1,0 +1,430 @@
+"use client";
+
+import { useState, useRef, useEffect, startTransition } from "react";
+import Link from "next/link";
+import { Paperclip, CalendarClock, Plus, UserPlus, ListChecks, X, Pencil } from "lucide-react";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import { enviarAPapelera } from "@/lib/papelera";
+import {
+  cliente,
+  persona,
+  tareas as tareasIniciales,
+  type Tarea,
+} from "@/lib/data";
+import { useUsuarioActual } from "@/lib/useUsuarioActual";
+import DrawerTarea from "@/components/DrawerTarea";
+
+// ─── Tipos y defaults de columnas ────────────────────────────────────────────
+
+export type Columna = {
+  id: string;
+  titulo: string;
+  punto: string;      // clase del punto de color (dot)
+  chipActivo: string; // clase del chip activo en el drawer
+};
+
+const COLUMNAS_DEFAULT: Columna[] = [
+  { id: "pendiente",    titulo: "Por hacer",  punto: "bg-ink-3",  chipActivo: "bg-ink text-paper"  },
+  { id: "en_curso",     titulo: "En curso",   punto: "bg-warn",   chipActivo: "bg-warn text-ink"   },
+  { id: "en_revision",  titulo: "En revisión",punto: "bg-lime",   chipActivo: "bg-lime text-ink"   },
+  { id: "hecha",        titulo: "Listo",      punto: "bg-ok",     chipActivo: "bg-ok text-paper"   },
+];
+
+const PALETA: { punto: string; chipActivo: string }[] = [
+  { punto: "bg-crit",       chipActivo: "bg-crit text-paper"       },
+  { punto: "bg-purple-400", chipActivo: "bg-purple-400 text-paper" },
+  { punto: "bg-sky-400",    chipActivo: "bg-sky-400 text-ink"      },
+  { punto: "bg-orange-400", chipActivo: "bg-orange-400 text-ink"   },
+  { punto: "bg-pink-400",   chipActivo: "bg-pink-400 text-ink"     },
+];
+
+const KEY_COLUMNAS = "mango-tareas-columnas";
+
+function leerColumnas(): Columna[] {
+  if (typeof window === "undefined") return COLUMNAS_DEFAULT;
+  try {
+    const raw = localStorage.getItem(KEY_COLUMNAS);
+    return raw ? (JSON.parse(raw) as Columna[]) : COLUMNAS_DEFAULT;
+  } catch { return COLUMNAS_DEFAULT; }
+}
+
+function guardarColumnas(cols: Columna[]) {
+  localStorage.setItem(KEY_COLUMNAS, JSON.stringify(cols));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+export default function Tareas() {
+  const usuarioActual = useUsuarioActual();
+  const [vista,           setVista]           = useState<"mias" | "equipo">("mias");
+  const [tareasState,     setTareasState]     = useState<Tarea[]>(tareasIniciales);
+  const [columnas,        setColumnas]        = useState<Columna[]>(COLUMNAS_DEFAULT);
+  const [tareaActivaId,   setTareaActivaId]   = useState<string | null>(null);
+  const [modoCrear,       setModoCrear]       = useState(false);
+  const [editandoColId,   setEditandoColId]   = useState<string | null>(null);
+  const [confirmColumna,  setConfirmColumna]  = useState<string | null>(null);
+  const [confirmTarea,    setConfirmTarea]    = useState<string | null>(null);
+
+  useEffect(() => { startTransition(() => setColumnas(leerColumnas())); }, []);
+
+  // Cargar tareas desde Supabase al montar
+  useEffect(() => {
+    fetch("/api/db/tareas")
+      .then(r => r.ok ? r.json() : null)
+      .then((rows) => {
+        if (!rows?.length) return;
+        setTareasState(rows.map((r: {
+          id: string; titulo: string; descripcion?: string; estado: string;
+          responsable: string; asignada_por: string | null;
+          cliente_id: string | null; vence: string | null; adjuntos: number;
+        }) => ({
+          id: r.id, titulo: r.titulo, descripcion: r.descripcion,
+          estado: r.estado, responsable: r.responsable,
+          asignadaPor: r.asignada_por, clienteId: r.cliente_id ?? undefined,
+          vence: r.vence ?? undefined, adjuntos: r.adjuntos,
+        })));
+      })
+      .catch(() => {});
+  }, []);
+
+  const drawerAbierto = tareaActivaId !== null || modoCrear;
+  const tareaActiva   = tareaActivaId ? (tareasState.find((t) => t.id === tareaActivaId) ?? null) : null;
+
+  const visibles =
+    vista === "mias"
+      ? tareasState.filter((t) => t.responsable === usuarioActual.id)
+      : tareasState;
+
+  // ── Columnas ──────────────────────────────────────────────────────────────
+
+  function setYGuardar(cols: Columna[]) { setColumnas(cols); guardarColumnas(cols); }
+
+  function renombrarColumna(id: string, titulo: string) {
+    setYGuardar(columnas.map((c) => c.id === id ? { ...c, titulo } : c));
+  }
+
+  function agregarColumna() {
+    const color = PALETA[(columnas.length - COLUMNAS_DEFAULT.length) % PALETA.length];
+    const id    = `col-${Date.now()}`;
+    const nuevas = [...columnas, { id, titulo: "Nueva columna", ...color }];
+    setYGuardar(nuevas);
+    setEditandoColId(id);
+  }
+
+  function eliminarColumna(id: string) {
+    const col = columnas.find((c) => c.id === id);
+    if (col) enviarAPapelera({ id: col.id, tipo: "columna", titulo: col.titulo, datos: col });
+    const primerOtro = columnas.find((c) => c.id !== id);
+    if (primerOtro) {
+      setTareasState((prev) => prev.map((t) => t.estado === id ? { ...t, estado: primerOtro.id } : t));
+    }
+    setYGuardar(columnas.filter((c) => c.id !== id));
+  }
+
+  // ── Tareas ────────────────────────────────────────────────────────────────
+
+  function cambiarEstado(id: string, estado: string) {
+    setTareasState((prev) => prev.map((t) => t.id === id ? { ...t, estado } : t));
+    fetch(`/api/db/tareas/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado }),
+    }).catch(() => {});
+  }
+  function editarTarea(id: string, cambios: Partial<Omit<Tarea, "id">>) {
+    setTareasState((prev) => prev.map((t) => t.id === id ? { ...t, ...cambios } : t));
+    fetch(`/api/db/tareas/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(cambios),
+    }).catch(() => {});
+  }
+  async function crearTarea(nueva: Omit<Tarea, "id">) {
+    const tempId = `t${Date.now()}`;
+    setTareasState((prev) => [{ ...nueva, id: tempId }, ...prev]);
+    try {
+      const res = await fetch("/api/db/tareas", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nueva),
+      });
+      if (res.ok) {
+        const guardada = await res.json();
+        setTareasState((prev) => prev.map((t) => t.id === tempId ? { ...t, id: guardada.id } : t));
+      }
+    } catch {}
+  }
+  function eliminarTarea(id: string) {
+    const tarea = tareasState.find((t) => t.id === id);
+    if (tarea) enviarAPapelera({ id: tarea.id, tipo: "tarea", titulo: tarea.titulo, datos: tarea });
+    setTareasState((prev) => prev.filter((t) => t.id !== id));
+    fetch(`/api/db/tareas/${id}`, { method: "DELETE" }).catch(() => {});
+  }
+
+  return (
+    <div className="mx-auto max-w-[1180px]">
+      <header className="mb-5 flex flex-wrap items-center gap-3">
+        <h1 className="font-display text-[28px] leading-none">Tareas</h1>
+
+        <div className="flex rounded-[10px] border border-line bg-card p-0.5">
+          {(["mias", "equipo"] as const).map((v) => (
+            <button key={v} type="button" onClick={() => setVista(v)}
+              className={["rounded-[8px] px-3 py-1.5 text-[13px] transition-colors", vista === v ? "bg-ink font-medium text-paper" : "text-ink-3 hover:bg-line-soft hover:text-ink"].join(" ")}>
+              {v === "mias" ? "Mis tareas" : "Del equipo"}
+            </button>
+          ))}
+        </div>
+
+        <span className="text-[13px] text-ink-3">
+          {visibles.filter((t) => t.estado !== "hecha").length} abiertas
+        </span>
+
+        <Link href="/tareas/todo"
+          className="ml-auto flex items-center gap-1.5 rounded-[10px] border border-line bg-card px-3.5 py-2 text-[13px] text-ink-2 transition-colors hover:border-ink-3/40 hover:text-ink">
+          <ListChecks size={15} strokeWidth={2} /> Mi to-do
+        </Link>
+
+        <button type="button" onClick={() => { setModoCrear(true); setTareaActivaId(null); }}
+          className="flex items-center gap-1.5 rounded-[10px] bg-lime px-3.5 py-2 text-[13px] font-bold text-ink transition-opacity hover:opacity-85">
+          <Plus size={15} strokeWidth={2.4} /> Nueva tarea
+        </button>
+      </header>
+
+      {/* ── Tablero ──────────────────────────────────────────────────────── */}
+      <div className="flex gap-3 overflow-x-auto pb-2">
+        {columnas.map((col) => {
+          const items = visibles.filter((t) => t.estado === col.id);
+          return (
+            <section key={col.id} className="flex min-w-[240px] max-w-[280px] flex-1 flex-col gap-2.5">
+              {/* Header columna */}
+              <header className="group flex items-center gap-2 border-b-2 border-line pb-2">
+                <span className={`h-2 w-2 shrink-0 rounded-full ${col.punto}`} />
+
+                {editandoColId === col.id ? (
+                  <input
+                    autoFocus
+                    defaultValue={col.titulo}
+                    onBlur={(e) => { renombrarColumna(col.id, e.target.value || col.titulo); setEditandoColId(null); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter")  { renombrarColumna(col.id, e.currentTarget.value || col.titulo); setEditandoColId(null); }
+                      if (e.key === "Escape") setEditandoColId(null);
+                    }}
+                    className="min-w-0 flex-1 bg-transparent font-display text-[12.5px] uppercase tracking-[0.09em] text-ink outline-none"
+                  />
+                ) : (
+                  <button type="button" onClick={() => setEditandoColId(col.id)}
+                    className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+                    title="Click para renombrar">
+                    <h2 className="truncate font-display text-[12.5px] uppercase tracking-[0.09em] text-ink-3 transition-colors group-hover:text-ink">
+                      {col.titulo}
+                    </h2>
+                    <Pencil size={10} strokeWidth={2} className="shrink-0 text-ink-3 opacity-0 transition-opacity group-hover:opacity-60" />
+                  </button>
+                )}
+
+                <span className="text-[12px] tabular-nums text-ink-3">{items.length}</span>
+
+                {columnas.length > 1 && (
+                  <button type="button" onClick={() => setConfirmColumna(col.id)}
+                    title="Eliminar columna"
+                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] text-ink-3 opacity-0 transition-all group-hover:opacity-100 hover:bg-crit-bg hover:text-crit">
+                    <X size={11} strokeWidth={2.5} />
+                  </button>
+                )}
+              </header>
+
+              {items.length === 0 ? (
+                <p className="rounded-card border border-dashed border-line py-6 text-center text-[12.5px] text-ink-3">
+                  Nada por acá
+                </p>
+              ) : (
+                items.map((t) => (
+                  <TarjetaTarea key={t.id} tarea={t} columnas={columnas} mostrarQuien={vista === "equipo"}
+                    onClick={() => { setModoCrear(false); setTareaActivaId(t.id); }}
+                    onCambiarEstado={cambiarEstado} />
+                ))
+              )}
+            </section>
+          );
+        })}
+
+        {/* Botón agregar columna */}
+        <div className="flex min-w-[48px] items-start pt-0.5">
+          <button type="button" onClick={agregarColumna}
+            title="Agregar columna"
+            className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-dashed border-line text-ink-3 transition-colors hover:border-ink-3/50 hover:bg-paper hover:text-ink">
+            <Plus size={15} strokeWidth={2} />
+          </button>
+        </div>
+      </div>
+
+      <DrawerTarea
+        key={tareaActiva?.id ?? (modoCrear ? "crear" : "closed")}
+        abierto={drawerAbierto}
+        tarea={modoCrear ? null : tareaActiva}
+        columnas={columnas}
+        onCerrar={() => { setTareaActivaId(null); setModoCrear(false); }}
+        onCambiarEstado={cambiarEstado}
+        onEditar={editarTarea}
+        onCrear={crearTarea}
+        onEliminar={(id) => setConfirmTarea(id)}
+      />
+
+      {confirmColumna && (
+        <ConfirmDialog
+          titulo="¿Eliminar columna?"
+          mensaje="Las tareas de esta columna se moverán a la primera columna disponible."
+          labelConfirmar="Eliminar columna"
+          onConfirmar={() => { eliminarColumna(confirmColumna); setConfirmColumna(null); }}
+          onCancelar={() => setConfirmColumna(null)}
+        />
+      )}
+      {confirmTarea && (
+        <ConfirmDialog
+          titulo="¿Eliminar tarea?"
+          mensaje="Se va a mover a la papelera."
+          labelConfirmar="Mover a papelera"
+          onConfirmar={() => {
+            eliminarTarea(confirmTarea);
+            setConfirmTarea(null);
+            setTareaActivaId(null);
+            setModoCrear(false);
+          }}
+          onCancelar={() => setConfirmTarea(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+function TarjetaTarea({
+  tarea, columnas, mostrarQuien, onClick, onCambiarEstado,
+}: {
+  tarea: Tarea; columnas: Columna[]; mostrarQuien: boolean;
+  onClick: () => void;
+  onCambiarEstado: (id: string, estado: string) => void;
+}) {
+  const [dragX, setDragX]     = useState(0);
+  const dragging              = useRef(false);
+  const startX                = useRef(0);
+  const moved                 = useRef(false);
+
+  const asigno = tarea.asignadaPor ? persona(tarea.asignadaPor) : null;
+  const resp   = persona(tarea.responsable);
+  const cli    = tarea.clienteId ? cliente(tarea.clienteId) : null;
+  const venceHoy = tarea.vence === new Date().toISOString().slice(0, 10);
+
+  const colIdx  = columnas.findIndex((c) => c.id === tarea.estado);
+  const colActual = columnas[colIdx];
+  const nextCol   = colIdx < columnas.length - 1 ? columnas[colIdx + 1] : null;
+  const prevCol   = colIdx > 0 ? columnas[colIdx - 1] : null;
+
+  const THRESHOLD = 72;
+  const MAX_DRAG  = 108;
+  const clamped   = Math.max(-MAX_DRAG, Math.min(MAX_DRAG, dragX));
+  const showRight = clamped > 14  && nextCol !== null;
+  const showLeft  = clamped < -14 && prevCol !== null;
+  const rightOk   = clamped >= THRESHOLD;
+  const leftOk    = clamped <= -THRESHOLD;
+
+  function onPointerDown(e: React.PointerEvent<HTMLElement>) {
+    if ((e.target as Element).closest("[data-nodrag]")) return;
+    dragging.current = true; moved.current = false; startX.current = e.clientX;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function onPointerMove(e: React.PointerEvent<HTMLElement>) {
+    if (!dragging.current) return;
+    const dx = e.clientX - startX.current;
+    if (Math.abs(dx) > 6) moved.current = true;
+    setDragX(dx);
+  }
+  function onPointerUp(e: React.PointerEvent<HTMLElement>) {
+    if (!dragging.current) return;
+    dragging.current = false;
+    const dx = e.clientX - startX.current;
+    setDragX(0);
+    if      (dx >= THRESHOLD && nextCol) onCambiarEstado(tarea.id, nextCol.id);
+    else if (dx <= -THRESHOLD && prevCol) onCambiarEstado(tarea.id, prevCol.id);
+    else if (!moved.current) onClick();
+  }
+
+  return (
+    <article
+      className="relative select-none touch-pan-y overflow-hidden rounded-card border border-line bg-card"
+      style={{ transform: `translateX(${clamped}px)`, transition: dragX === 0 ? "transform 0.18s cubic-bezier(0.25,0.46,0.45,0.94)" : "none" }}
+      onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
+      onPointerCancel={() => { dragging.current = false; setDragX(0); }}>
+
+      {showRight && nextCol && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-end pr-3"
+          style={{ opacity: Math.min(1, (clamped - 14) / 44) }}>
+          <span className={["rounded-chip px-2.5 py-1 text-[11.5px] font-bold", rightOk ? "bg-lime text-ink" : "bg-lime-soft text-ink"].join(" ")}>
+            {nextCol.titulo} →
+          </span>
+        </div>
+      )}
+      {showLeft && prevCol && (
+        <div className="pointer-events-none absolute inset-0 flex items-center pl-3"
+          style={{ opacity: Math.min(1, (-clamped - 14) / 44) }}>
+          <span className={["rounded-chip px-2.5 py-1 text-[11.5px] font-bold", leftOk ? "bg-line text-ink" : "bg-line-soft text-ink-2"].join(" ")}>
+            ← {prevCol.titulo}
+          </span>
+        </div>
+      )}
+
+      <div className="cursor-pointer p-3.5 transition-all hover:-translate-y-px hover:shadow-sm"
+        style={{ opacity: Math.abs(clamped) > 14 ? Math.max(0.55, 1 - Math.abs(clamped) / 160) : 1 }}>
+        {cli && (
+          <Link href={`/clientes/${cli.id}`} onClick={(e) => e.stopPropagation()}
+            className="mb-2 inline-block rounded-chip bg-lime-soft px-2 py-0.5 text-[11px] font-bold text-ink transition-opacity hover:opacity-75">
+            {cli.nombre}
+          </Link>
+        )}
+
+        <h3 className="text-[14px] font-bold leading-snug">{tarea.titulo}</h3>
+
+        {tarea.descripcion && (
+          <p className="mt-1.5 line-clamp-2 text-[12.5px] leading-snug text-ink-3">{tarea.descripcion}</p>
+        )}
+
+        <footer className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px] text-ink-3">
+          {mostrarQuien && resp && (
+            <span className="flex items-center gap-1.5">
+              <span className="flex h-5 w-5 items-center justify-center rounded-[7px] bg-lime-soft text-[10px] font-bold text-ink">{resp.inicial}</span>
+              {resp.nombre}
+            </span>
+          )}
+          {tarea.adjuntos > 0 && (
+            <span className="flex items-center gap-1"><Paperclip size={12} strokeWidth={2} />{tarea.adjuntos}</span>
+          )}
+          {tarea.vence && (
+            <span className={`flex items-center gap-1 ${venceHoy ? "font-bold text-crit" : ""}`}>
+              <CalendarClock size={12} strokeWidth={2} />
+              {venceHoy ? "Vence hoy" : new Date(tarea.vence + "T12:00:00").toLocaleDateString("es-AR", { day: "numeric", month: "short" })}
+            </span>
+          )}
+
+          {/* Chip de estado clickeable */}
+          {colActual && (
+            <button type="button" data-nodrag title="Cambiar estado"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                const next = nextCol ?? columnas[0];
+                onCambiarEstado(tarea.id, next.id);
+              }}
+              className={`ml-auto rounded-chip px-2 py-0.5 text-[11px] font-bold transition-opacity hover:opacity-75 ${colActual.chipActivo}`}>
+              {colActual.titulo}
+            </button>
+          )}
+        </footer>
+
+        {asigno && (
+          <p className="mt-2.5 flex items-center gap-1.5 border-t border-line-soft pt-2.5 text-[11.5px] text-ink-3">
+            <UserPlus size={12} strokeWidth={2} />
+            Asignada por <span className="font-bold text-ink">{asigno.nombre}</span>
+          </p>
+        )}
+      </div>
+    </article>
+  );
+}

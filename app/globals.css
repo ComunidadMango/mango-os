@@ -1,26 +1,57 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-ink: #003430;
+  --color-ink-2: #2b4b46;
+  --color-ink-3: #5c7a75;
+  --color-lime: #daff59;
+  --color-lime-soft: #eeffb1;
+  --color-coal: #1f1f1f;
+  --color-paper: #f3f5f1;
+  --color-card: #ffffff;
+  --color-line: #dde4de;
+  --color-line-soft: #e9eeea;
+
+  --color-ok: #1c6b52;
+  --color-ok-bg: #dff0e4;
+  --color-warn: #d97706;
+  --color-warn-bg: #fef3c7;
+  --color-crit: #a63d33;
+  --color-crit-bg: #f9dfdb;
+
+  --font-display: var(--font-batica), "Helvetica Neue", sans-serif;
+  --font-sans: var(--font-satoshi), -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --radius-card: 14px;
+  --radius-soft: 10px;
+  --radius-chip: 8px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* El corte diagonal del isotipo — firma visual de Mango. */
+.notch {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+}
+.notch-sm {
+  clip-path: polygon(0 0, 100% 0, 100% 70%, 70% 100%, 0 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
