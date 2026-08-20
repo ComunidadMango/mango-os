@@ -1,0 +1,24 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/seguimiento-reminder?secret=tfHYlJkoT2rESVYn9gCY36FqxV9OOyZ3ouMagIOYN3I",
+      "schedule": "0 13 * * 1,3,5"
+    },
+    {
+      "path": "/api/cron/tareas-vencen?secret=tfHYlJkoT2rESVYn9gCY36FqxV9OOyZ3ouMagIOYN3I",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/reporte-inicio-mes?secret=tfHYlJkoT2rESVYn9gCY36FqxV9OOyZ3ouMagIOYN3I",
+      "schedule": "0 13 1 * *"
+    },
+    {
+      "path": "/api/cron/reporte-check?secret=tfHYlJkoT2rESVYn9gCY36FqxV9OOyZ3ouMagIOYN3I",
+      "schedule": "0 13 5 * *"
+    },
+    {
+      "path": "/api/cron/organico-reminder?secret=tfHYlJkoT2rESVYn9gCY36FqxV9OOyZ3ouMagIOYN3I",
+      "schedule": "0 9 * * *"
+    }
+  ]
+}
