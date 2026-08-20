@@ -351,7 +351,12 @@ export default function Sidebar({
                   <button
                     type="button"
                     title="Cerrar sesión"
-                    onClick={(e) => { e.preventDefault(); signOut({ callbackUrl: "/login" }); }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (window.confirm("¿Seguro que querés cerrar sesión?")) {
+                        signOut({ callbackUrl: "/login" });
+                      }
+                    }}
                     className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] text-white/40 transition-colors hover:bg-white/10 hover:text-white/80"
                   >
                     <LogOut size={13} strokeWidth={2} />
