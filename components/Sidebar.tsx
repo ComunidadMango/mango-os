@@ -14,6 +14,7 @@ import { useSession, signOut } from "next-auth/react";
 import { tareas } from "@/lib/data";
 import { useUsuarioActual } from "@/lib/useUsuarioActual";
 import { ICONOS_PAGINA, type PaginaCustom } from "@/lib/paginas";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 type Item = { href: string; label: string; icon: LucideIcon; badge?: number };
 
@@ -59,6 +60,7 @@ export default function Sidebar({
   const [editandoId,       setEditandoId]       = useState<string | null>(null);
   const [nombreEditando,   setNombreEditando]   = useState("");
   const [colapsado,        setColapsado]        = useState(false);
+  const [confirmandoSalida, setConfirmandoSalida] = useState(false);
 
   // Leer preferencia guardada
   useEffect(() => {
@@ -353,9 +355,7 @@ export default function Sidebar({
                     title="Cerrar sesión"
                     onClick={(e) => {
                       e.preventDefault();
-                      if (window.confirm("¿Seguro que querés cerrar sesión?")) {
-                        signOut({ callbackUrl: "/login" });
-                      }
+                      setConfirmandoSalida(true);
                     }}
                     className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] text-white/40 transition-colors hover:bg-white/10 hover:text-white/80"
                   >
@@ -376,6 +376,15 @@ export default function Sidebar({
           )}
         </div>
       </aside>
+
+      {confirmandoSalida && (
+        <ConfirmDialog
+          titulo="¿Seguro que querés cerrar sesión?"
+          labelConfirmar="Cerrar sesión"
+          onConfirmar={() => signOut({ callbackUrl: "/login" })}
+          onCancelar={() => setConfirmandoSalida(false)}
+        />
+      )}
     </>
   );
 }
