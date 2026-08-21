@@ -47,7 +47,6 @@ type EstadoFinanzas = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MES_ACTUAL  = new Date().toISOString().slice(0, 7);
-const KEY_ACCESOS = "mango-finanzas-accesos";
 
 function estadoInicial(): EstadoFinanzas {
   return { mes: MES_ACTUAL, clientes: [], equipo: [], gastos: [] };
@@ -98,12 +97,21 @@ function leerEstadoLocalViejo(): EstadoFinanzas | null {
   } catch { return null; }
 }
 
-function leerAccesos(): string[] {
-  if (typeof window === "undefined") return [];
-  try { return JSON.parse(localStorage.getItem(KEY_ACCESOS) ?? "[]"); } catch { return []; }
+// Quién más tiene acceso de lectura a Finanzas — vive en Supabase, controlado
+// solo por Cami y Maru (server-side), no en el navegador de cada uno.
+async function leerAccesos(): Promise<string[]> {
+  try {
+    const res = await fetch("/api/db/finanzas/accesos");
+    if (!res.ok) return [];
+    return await res.json() as string[];
+  } catch { return []; }
 }
-function guardarAccesos(ids: string[]): void {
-  localStorage.setItem(KEY_ACCESOS, JSON.stringify(ids));
+async function setAcceso(personaId: string, otorgar: boolean): Promise<void> {
+  await fetch("/api/db/finanzas/accesos", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ personaId, otorgar }),
+  }).catch(() => {});
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -185,7 +193,7 @@ export default function Finanzas() {
   const [recuperable, setRecuperable]        = useState<EstadoFinanzas | null>(null);
 
   useEffect(() => {
-    setAccesosGrantedState(leerAccesos());
+    leerAccesos().then(setAccesosGrantedState);
     let cancelled = false;
     cargarEstado().then((s) => {
       if (cancelled) return;
@@ -228,10 +236,10 @@ export default function Finanzas() {
   }
 
   function toggleAcceso(personaId: string) {
-    const actual = leerAccesos();
-    const nueva  = actual.includes(personaId) ? actual.filter((id) => id !== personaId) : [...actual, personaId];
-    guardarAccesos(nueva);
-    setAccesosGrantedState(nueva);
+    const otorgar = !accesosGranted.includes(personaId);
+    const nueva = otorgar ? [...accesosGranted, personaId] : accesosGranted.filter((id) => id !== personaId);
+    setAccesosGrantedState(nueva); // optimista
+    setAcceso(personaId, otorgar);
   }
 
   if (!tieneAcceso) return <SinAcceso />;

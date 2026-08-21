@@ -10,12 +10,19 @@ async function idDelUsuario(email: string): Promise<string | null> {
   return data?.id ?? null;
 }
 
+async function tieneAccesoLectura(id: string): Promise<boolean> {
+  if (ADMIN_IDS.includes(id)) return true;
+  const db = createServerClient();
+  const { data } = await db.from("finanzas_accesos").select("persona_id").eq("persona_id", id).maybeSingle();
+  return !!data;
+}
+
 export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const id = await idDelUsuario(session.user.email);
-  if (!id || !ADMIN_IDS.includes(id)) {
+  if (!id || !(await tieneAccesoLectura(id))) {
     return NextResponse.json({ error: "Sin acceso a Finanzas" }, { status: 403 });
   }
 
