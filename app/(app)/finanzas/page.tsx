@@ -78,6 +78,26 @@ function guardarEstado(s: EstadoFinanzas): void {
   }).catch(() => {});
 }
 
+// Antes de mover Finanzas a Supabase, guardaba todo en localStorage. Esos
+// datos viejos nunca se borraron — si alguien los cargó en esa época, siguen
+// ahí sin usarse. Los detectamos para ofrecer recuperarlos con un clic.
+const KEY_ESTADO_VIEJO = "mango-finanzas-estado-v3";
+
+function leerEstadoLocalViejo(): EstadoFinanzas | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(KEY_ESTADO_VIEJO);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<EstadoFinanzas> & { mes?: string };
+    if (parsed.mes !== MES_ACTUAL) return null;
+    const clientes = Array.isArray(parsed.clientes) ? parsed.clientes : [];
+    const equipo   = Array.isArray(parsed.equipo)   ? parsed.equipo   : [];
+    const gastos   = Array.isArray(parsed.gastos)   ? parsed.gastos   : [];
+    if (!clientes.length && !equipo.length && !gastos.length) return null;
+    return { mes: MES_ACTUAL, clientes, equipo, gastos };
+  } catch { return null; }
+}
+
 function leerAccesos(): string[] {
   if (typeof window === "undefined") return [];
   try { return JSON.parse(localStorage.getItem(KEY_ACCESOS) ?? "[]"); } catch { return []; }
@@ -162,15 +182,30 @@ export default function Finanzas() {
   const [menuAbierto, setMenuAbierto]        = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [confirmFin, setConfirmFin]          = useState<{ tipo: "cliente" | "equipo" | "gasto"; id: string; titulo: string } | null>(null);
+  const [recuperable, setRecuperable]        = useState<EstadoFinanzas | null>(null);
 
   useEffect(() => {
     setAccesosGrantedState(leerAccesos());
     let cancelled = false;
     cargarEstado().then((s) => {
-      if (!cancelled) startTransition(() => setEstadoRaw(s));
+      if (cancelled) return;
+      startTransition(() => setEstadoRaw(s));
+      // Solo ofrecemos recuperar datos viejos si lo sincronizado está vacío,
+      // para no pisar nada que ya se haya cargado bien.
+      if (!s.clientes.length && !s.equipo.length && !s.gastos.length) {
+        setRecuperable(leerEstadoLocalViejo());
+      }
     });
     return () => { cancelled = true; };
   }, []);
+
+  function recuperarDatosViejos() {
+    if (!recuperable) return;
+    setEstadoRaw(recuperable);
+    guardarEstado(recuperable);
+    localStorage.removeItem(KEY_ESTADO_VIEJO);
+    setRecuperable(null);
+  }
 
   useEffect(() => {
     if (!menuAbierto) return;
@@ -325,6 +360,25 @@ export default function Finanzas() {
           </div>
         )}
       </header>
+
+      {recuperable && (
+        <div className="mb-5 flex items-center gap-3 rounded-card border border-lime/30 bg-lime-soft/30 px-5 py-3.5">
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-bold text-ink">Encontramos datos de Finanzas guardados en este navegador</p>
+            <p className="mt-0.5 text-[12px] text-ink-2">
+              De antes de que Finanzas se compartiera entre vos y {equipoData.find(p => p.id !== usuarioActual.id && ROLES_FINANZAS.includes(p.id))?.nombre ?? "el otro admin"}. ¿Los subimos para que los vean los dos?
+            </p>
+          </div>
+          <button type="button" onClick={recuperarDatosViejos}
+            className="shrink-0 rounded-[10px] bg-lime px-3.5 py-2 text-[12.5px] font-bold text-ink transition-opacity hover:opacity-85">
+            Subir estos datos
+          </button>
+          <button type="button" onClick={() => setRecuperable(null)}
+            className="shrink-0 rounded-[10px] border border-line px-3 py-2 text-[12.5px] text-ink-2 transition-colors hover:bg-line-soft">
+            Descartar
+          </button>
+        </div>
+      )}
 
       {/* Alerta día 10 */}
       {hayAlerta && (
