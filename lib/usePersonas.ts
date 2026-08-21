@@ -17,6 +17,7 @@ type PersonaRow = {
   animo: string | null;
   en_que: string;
   foto: string | null;
+  email: string | null;
 };
 
 function rowToPersona(r: PersonaRow): Persona {
@@ -28,6 +29,7 @@ function rowToPersona(r: PersonaRow): Persona {
     animo: r.animo,
     enQue: r.en_que,
     foto: r.foto ?? undefined,
+    email: r.email ?? undefined,
   };
 }
 
@@ -67,8 +69,8 @@ export function usePersonas(): Persona[] {
     const foto = session?.user?.image;
     if (!email || !foto) return;
 
-    const id = email.split("@")[0];
-    const yaSincronizada = cachedList?.find((p) => p.id === id)?.foto === foto;
+    const emailLower = email.toLowerCase();
+    const yaSincronizada = cachedList?.find((p) => p.email?.toLowerCase() === emailLower)?.foto === foto;
     if (yaSincronizada) return;
 
     fetch("/api/db/personas", { method: "PUT" })
@@ -77,8 +79,8 @@ export function usePersonas(): Persona[] {
         const actualizada = (await res.json()) as PersonaRow | null;
         if (!actualizada) return;
         setLista((prev) => {
-          const next = prev.some((p) => p.id === id)
-            ? prev.map((p) => (p.id === id ? rowToPersona(actualizada) : p))
+          const next = prev.some((p) => p.id === actualizada.id)
+            ? prev.map((p) => (p.id === actualizada.id ? rowToPersona(actualizada) : p))
             : [...prev, rowToPersona(actualizada)];
           cachedList = next;
           setPersonasCache(next);

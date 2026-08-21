@@ -22,21 +22,23 @@ export async function PUT() {
   const session = await auth();
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const id = session.user.email.split("@")[0];
+  const email = session.user.email;
   const db = createServerClient();
 
+  // Matcheamos por email real, NO por el prefijo del mail — el id de la fila
+  // (ej. "cami") es solo una clave interna y no tiene por qué coincidir con
+  // el principio del mail real de la persona (ej. camila@...).
   const { data, error } = await db
     .from("personas")
     .update({
-      foto:  session.user.image ?? null,
-      email: session.user.email,
+      foto: session.user.image ?? null,
       ...(session.user.name ? { nombre: session.user.name } : {}),
     })
-    .eq("id", id)
+    .ilike("email", email)
     .select();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  // 0 filas = el usuario logueado no está en el roster (personas.id no coincide
-  // con el prefijo de su email) — no es un error, simplemente no hay nada que sincronizar.
+  // 0 filas = el usuario logueado no está en el roster (su email no está
+  // cargado en personas.email todavía) — no es un error, no hay nada que sincronizar.
   return NextResponse.json(data?.[0] ?? null);
 }

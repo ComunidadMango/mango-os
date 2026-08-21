@@ -23,23 +23,33 @@ export type Persona = {
   animo: string | null;
   enQue: string;
   foto?: string;
+  email?: string;
 };
 
 // ─── Datos de fallback (desarrollo sin Supabase) ──────────────────────────────
+// El email real de cada persona NO tiene por qué empezar igual que su id
+// (ej: id "cami" pero mail camila@...). El id es solo una clave interna.
 export const equipo: Persona[] = [
-  { id: "cami", nombre: "Cami", rol: "Founder",           inicial: "C", animo: null, enQue: "" },
-  { id: "theo", nombre: "Theo", rol: "Media Buyer",       inicial: "T", animo: null, enQue: "" },
-  { id: "feli", nombre: "Feli", rol: "Creative",          inicial: "F", animo: null, enQue: "" },
-  { id: "mili", nombre: "Mili", rol: "Content & Account", inicial: "M", animo: null, enQue: "" },
-  { id: "maru",  nombre: "Maru",  rol: "Tech Ops",          inicial: "M", animo: null, enQue: "" },
-  { id: "lucia", nombre: "Lucía", rol: "Content & Account", inicial: "L", animo: null, enQue: "" },
+  { id: "cami", nombre: "Cami", rol: "Founder",           inicial: "C", animo: null, enQue: "", email: "camila@comunidadmango.com" },
+  { id: "theo", nombre: "Theo", rol: "Media Buyer",       inicial: "T", animo: null, enQue: "", email: "matheo@comunidadmango.com" },
+  { id: "feli", nombre: "Feli", rol: "Creative",          inicial: "F", animo: null, enQue: "", email: "felicitas@comunidadmango.com" },
+  { id: "mili", nombre: "Mili", rol: "Content & Account", inicial: "M", animo: null, enQue: "", email: "milagros@comunidadmango.com" },
+  { id: "maru",  nombre: "Maru",  rol: "Tech Ops",          inicial: "M", animo: null, enQue: "", email: "maria@comunidadmango.com" },
+  { id: "lucia", nombre: "Lucía", rol: "Content & Account", inicial: "L", animo: null, enQue: "", email: "lucia@comunidadmango.com" },
 ];
 
 export const usuarioActual = equipo.find((p) => p.id === "maru")!;
 
 export function personaPorEmail(email: string): Persona | undefined {
+  const lower = email.toLowerCase();
+  // Matchear por el email real es lo confiable — el id es solo una clave interna
+  // que no necesariamente coincide con el principio del mail de cada persona.
+  const porEmail = _personas.find((p) => p.email?.toLowerCase() === lower)
+    ?? equipo.find((p) => p.email?.toLowerCase() === lower);
+  if (porEmail) return porEmail;
+
+  // Fallback legacy por si alguna persona no tiene email cargado todavía
   const id = email.split("@")[0];
-  // Primero buscar en el cache de Supabase, luego en el fallback
   return _personas.find((p) => p.id === id) ?? equipo.find((p) => p.id === id);
 }
 

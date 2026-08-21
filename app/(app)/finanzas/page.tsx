@@ -47,31 +47,35 @@ type EstadoFinanzas = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MES_ACTUAL  = new Date().toISOString().slice(0, 7);
-const KEY_ESTADO  = "mango-finanzas-estado-v3";
 const KEY_ACCESOS = "mango-finanzas-accesos";
 
 function estadoInicial(): EstadoFinanzas {
   return { mes: MES_ACTUAL, clientes: [], equipo: [], gastos: [] };
 }
 
-function leerEstado(): EstadoFinanzas {
-  if (typeof window === "undefined") return estadoInicial();
+// Finanzas se guarda en Supabase (tabla "finanzas", un registro por mes) para
+// que Cami y Maru vean exactamente los mismos números — antes vivía solo en
+// el localStorage de cada navegador, por eso no coincidían.
+async function cargarEstado(): Promise<EstadoFinanzas> {
   try {
-    const raw = localStorage.getItem(KEY_ESTADO);
-    if (!raw) return estadoInicial();
-    const parsed = JSON.parse(raw) as Partial<EstadoFinanzas> & { mes?: string };
-    if (parsed.mes !== MES_ACTUAL) return estadoInicial();
+    const res = await fetch(`/api/db/finanzas?mes=${MES_ACTUAL}`);
+    if (!res.ok) return estadoInicial();
+    const data = await res.json() as Partial<EstadoFinanzas> & { mes?: string };
     return {
       mes: MES_ACTUAL,
-      clientes: Array.isArray(parsed.clientes) ? parsed.clientes : [],
-      equipo:   Array.isArray(parsed.equipo)   ? parsed.equipo   : [],
-      gastos:   Array.isArray(parsed.gastos)   ? parsed.gastos   : [],
+      clientes: Array.isArray(data.clientes) ? data.clientes : [],
+      equipo:   Array.isArray(data.equipo)   ? data.equipo   : [],
+      gastos:   Array.isArray(data.gastos)   ? data.gastos   : [],
     };
   } catch { return estadoInicial(); }
 }
 
 function guardarEstado(s: EstadoFinanzas): void {
-  localStorage.setItem(KEY_ESTADO, JSON.stringify(s));
+  fetch("/api/db/finanzas", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(s),
+  }).catch(() => {});
 }
 
 function leerAccesos(): string[] {
@@ -160,10 +164,12 @@ export default function Finanzas() {
   const [confirmFin, setConfirmFin]          = useState<{ tipo: "cliente" | "equipo" | "gasto"; id: string; titulo: string } | null>(null);
 
   useEffect(() => {
-    startTransition(() => {
-      setEstadoRaw(leerEstado());
-      setAccesosGrantedState(leerAccesos());
+    setAccesosGrantedState(leerAccesos());
+    let cancelled = false;
+    cargarEstado().then((s) => {
+      if (!cancelled) startTransition(() => setEstadoRaw(s));
     });
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
