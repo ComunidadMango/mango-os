@@ -1,10 +1,27 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus, X, Check } from "lucide-react";
+import { Plus, X, Check, CalendarDays } from "lucide-react";
 
 type Prioridad = "alta" | "media" | "baja";
-type Item = { id: string; texto: string; hecho: boolean; prioridad: Prioridad };
+type Item = {
+  id: string;
+  texto: string;
+  hecho: boolean;
+  prioridad: Prioridad;
+  creadoEn: string;         // ISO yyyy-mm-dd — cuándo se escribió
+  vence: string | null;     // ISO yyyy-mm-dd — para cuándo hay que hacerla
+};
+
+function hoyISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function fmtCorta(iso: string): string {
+  const [, m, d] = iso.split("-").map(Number);
+  const MESES = ["", "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  return `${d} ${MESES[m]}`;
+}
 
 const PRIORIDAD_CICLO: Prioridad[] = ["alta", "media", "baja"];
 const PRIORIDAD_ORDEN: Record<Prioridad, number> = { alta: 0, media: 1, baja: 2 };
@@ -25,8 +42,13 @@ export default function MiTodo() {
       const stored = localStorage.getItem("mango-todo");
       if (stored) {
         const parsed = JSON.parse(stored) as Item[];
-        // Compatibilidad con items viejos sin prioridad
-        setItems(parsed.map((i) => ({ ...i, prioridad: i.prioridad ?? ("media" as Prioridad) })));
+        // Compatibilidad con items viejos sin prioridad/fechas
+        setItems(parsed.map((i) => ({
+          ...i,
+          prioridad: i.prioridad ?? ("media" as Prioridad),
+          creadoEn:  i.creadoEn ?? hoyISO(),
+          vence:     i.vence ?? null,
+        })));
       }
     } catch {}
   }, []);
@@ -39,9 +61,16 @@ export default function MiTodo() {
   function agregar() {
     const texto = nuevo.trim();
     if (!texto) return;
-    guardar([...items, { id: `td-${Date.now()}`, texto, hecho: false, prioridad: "media" }]);
+    guardar([...items, {
+      id: `td-${Date.now()}`, texto, hecho: false, prioridad: "media",
+      creadoEn: hoyISO(), vence: null,
+    }]);
     setNuevo("");
     inputRef.current?.focus();
+  }
+
+  function setVence(id: string, fecha: string) {
+    guardar(items.map((i) => (i.id === id ? { ...i, vence: fecha || null } : i)));
   }
 
   function toggle(id: string) {
@@ -105,36 +134,54 @@ export default function MiTodo() {
           {/* Pendientes — ordenados por prioridad */}
           {pendientes.map((item) => {
             const { label, clase } = PRIORIDAD_CFG[item.prioridad];
+            const vencida = item.vence !== null && item.vence < hoyISO();
             return (
               <div
                 key={item.id}
-                className="group flex items-center gap-3 rounded-card border border-line bg-card px-4 py-3"
+                className="group flex flex-col gap-1.5 rounded-card border border-line bg-card px-4 py-3"
               >
-                <button
-                  type="button"
-                  onClick={() => toggle(item.id)}
-                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border-[1.5px] border-line transition-colors hover:border-ok hover:bg-ok/10"
-                />
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => toggle(item.id)}
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border-[1.5px] border-line transition-colors hover:border-ok hover:bg-ok/10"
+                  />
 
-                {/* Badge de prioridad — click para ciclar */}
-                <button
-                  type="button"
-                  onClick={() => ciclaPrioridad(item.id)}
-                  title="Click para cambiar prioridad"
-                  className={`shrink-0 rounded-[5px] px-1.5 py-px text-[10.5px] font-bold transition-opacity hover:opacity-70 ${clase}`}
-                >
-                  {label}
-                </button>
+                  {/* Badge de prioridad — click para ciclar */}
+                  <button
+                    type="button"
+                    onClick={() => ciclaPrioridad(item.id)}
+                    title="Click para cambiar prioridad"
+                    className={`shrink-0 rounded-[5px] px-1.5 py-px text-[10.5px] font-bold transition-opacity hover:opacity-70 ${clase}`}
+                  >
+                    {label}
+                  </button>
 
-                <span className="flex-1 text-[14px] text-ink">{item.texto}</span>
+                  <span className="flex-1 text-[14px] text-ink">{item.texto}</span>
 
-                <button
-                  type="button"
-                  onClick={() => eliminar(item.id)}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] text-ink-3 opacity-0 transition-all group-hover:opacity-100 hover:bg-line-soft hover:text-crit"
-                >
-                  <X size={13} strokeWidth={2.5} />
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => eliminar(item.id)}
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] text-ink-3 opacity-0 transition-all group-hover:opacity-100 hover:bg-line-soft hover:text-crit"
+                  >
+                    <X size={13} strokeWidth={2.5} />
+                  </button>
+                </div>
+
+                {/* Fechas: cuándo se escribió + para cuándo hay que hacerla */}
+                <div className="flex items-center gap-3 pl-8 text-[11.5px] text-ink-3">
+                  <span>Escrita el {fmtCorta(item.creadoEn)}</span>
+                  <label className={`flex cursor-pointer items-center gap-1 transition-colors hover:text-ink-2 ${vencida ? "font-bold text-crit" : ""}`}>
+                    <CalendarDays size={12} strokeWidth={2} />
+                    {item.vence ? `Vence ${fmtCorta(item.vence)}` : "Poner fecha"}
+                    <input
+                      type="date"
+                      value={item.vence ?? ""}
+                      onChange={(e) => setVence(item.id, e.target.value)}
+                      className="absolute h-0 w-0 opacity-0"
+                    />
+                  </label>
+                </div>
               </div>
             );
           })}

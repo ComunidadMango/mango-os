@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { X, ClipboardList } from "lucide-react";
-import { equipo, type Cliente } from "@/lib/data";
+import { type Cliente } from "@/lib/data";
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -10,13 +10,8 @@ type Draft = {
   nombre: string;
   rubro: string;
   descripcion: string;
-  responsable: string;
-  mediaBuyer: string;
   fechaAlta: string;
-  fee: string;
 };
-
-function toStr(n?: number) { return n !== undefined ? String(n) : ""; }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -26,10 +21,7 @@ export default function FichaDrawer({ cliente: c }: { cliente: Cliente }) {
     nombre:      c.nombre,
     rubro:       c.rubro,
     descripcion: c.descripcion ?? "",
-    responsable: c.responsable,
-    mediaBuyer:  c.mediaBuyer ?? "",
     fechaAlta:   c.fechaAlta ?? "",
-    fee:         toStr(c.fee),
   });
   const [guardado, setGuardado] = useState(false);
 
@@ -101,73 +93,12 @@ export default function FichaDrawer({ cliente: c }: { cliente: Cliente }) {
                     className={`${inputCls} resize-none`} />
                 </Campo>
 
-                {/* Account Manager */}
-                <Campo label="Account Manager">
-                  <div className="flex flex-wrap gap-2">
-                    {equipo.map(p => (
-                      <button key={p.id} type="button"
-                        onClick={() => set("responsable", draft.responsable === p.id ? "" : p.id)}
-                        className={[
-                          "flex items-center gap-2 rounded-[10px] border px-3 py-2 text-[13px] transition-all",
-                          draft.responsable === p.id
-                            ? "border-ink bg-ink text-paper"
-                            : "border-line bg-card text-ink-2 hover:border-ink-3/50",
-                        ].join(" ")}>
-                        <span className="notch-sm flex h-5 w-5 items-center justify-center rounded-[6px] bg-lime-soft text-[10px] font-bold text-ink">
-                          {p.inicial}
-                        </span>
-                        {p.nombre}
-                      </button>
-                    ))}
-                  </div>
+                {/* Fecha de alta */}
+                <Campo label="Fecha de alta">
+                  <input type="date" value={draft.fechaAlta}
+                    onChange={e => set("fechaAlta", e.target.value)}
+                    className={inputCls} />
                 </Campo>
-
-                {/* Media Buyer */}
-                <Campo label="Media Buyer">
-                  <div className="flex flex-wrap gap-2">
-                    {equipo.map(p => (
-                      <button key={p.id} type="button"
-                        onClick={() => set("mediaBuyer", draft.mediaBuyer === p.id ? "" : p.id)}
-                        className={[
-                          "flex items-center gap-2 rounded-[10px] border px-3 py-2 text-[13px] transition-all",
-                          draft.mediaBuyer === p.id
-                            ? "border-ink bg-ink text-paper"
-                            : "border-line bg-card text-ink-2 hover:border-ink-3/50",
-                        ].join(" ")}>
-                        <span className="notch-sm flex h-5 w-5 items-center justify-center rounded-[6px] bg-lime-soft text-[10px] font-bold text-ink">
-                          {p.inicial}
-                        </span>
-                        {p.nombre}
-                      </button>
-                    ))}
-                    {/* Opción "ninguno" */}
-                    <button type="button"
-                      onClick={() => set("mediaBuyer", "")}
-                      className={[
-                        "rounded-[10px] border px-3 py-2 text-[13px] transition-all",
-                        draft.mediaBuyer === ""
-                          ? "border-ink bg-ink text-paper"
-                          : "border-line bg-card text-ink-2 hover:border-ink-3/50",
-                      ].join(" ")}>
-                      Ninguno
-                    </button>
-                  </div>
-                </Campo>
-
-                {/* Fecha de alta + Fee */}
-                <div className="grid grid-cols-2 gap-3">
-                  <Campo label="Fecha de alta">
-                    <input type="date" value={draft.fechaAlta}
-                      onChange={e => set("fechaAlta", e.target.value)}
-                      className={inputCls} />
-                  </Campo>
-                  <Campo label="Fee del servicio (USD)">
-                    <input type="number" min={0} value={draft.fee}
-                      onChange={e => set("fee", e.target.value)}
-                      placeholder="0"
-                      className={inputCls} />
-                  </Campo>
-                </div>
 
               </div>
             </div>

@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/tareas-vencen?secret=tfHYlJkoT2rESVYn9gCY36FqxV9OOyZ3ouMagIOYN3I",
-      "schedule": "0 9 * * *"
+      "schedule": "50 12 * * *"
     },
     {
       "path": "/api/cron/reporte-inicio-mes?secret=tfHYlJkoT2rESVYn9gCY36FqxV9OOyZ3ouMagIOYN3I",
@@ -18,7 +18,7 @@
     },
     {
       "path": "/api/cron/organico-reminder?secret=tfHYlJkoT2rESVYn9gCY36FqxV9OOyZ3ouMagIOYN3I",
-      "schedule": "0 9 * * *"
+      "schedule": "50 12 * * *"
     }
   ]
 }

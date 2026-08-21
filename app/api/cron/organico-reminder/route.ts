@@ -23,7 +23,7 @@ type EventoRow = {
   clientes: { nombre: string } | null;
 };
 
-type Persona = { id: string; nombre: string; mail: string | null };
+type Persona = { id: string; nombre: string; email: string | null };
 
 function addDays(date: Date, n: number): string {
   const d = new Date(date);
@@ -59,10 +59,10 @@ export async function GET(req: Request) {
 
   const { data: personas } = await db
     .from("personas")
-    .select("id, nombre, mail");
+    .select("id, nombre, email");
 
   const mailDe = (id: string) =>
-    (personas as Persona[] | null)?.find((p) => p.id === id)?.mail ?? null;
+    (personas as Persona[] | null)?.find((p) => p.id === id)?.email ?? null;
 
   let enviados = 0;
 
