@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, startTransition } from "react";
-import { useSession } from "next-auth/react";
 import {
   ChevronLeft, ChevronRight, Plus, ExternalLink,
   Loader2, AlertTriangle, X, CalendarDays, Check,
   Sparkles, CheckCircle2, Circle, Trash2, Palette,
 } from "lucide-react";
 import { equipo } from "@/lib/data";
+import { useUsuarioActual } from "@/lib/useUsuarioActual";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS
@@ -185,8 +185,7 @@ async function apiCrear(cal: Tab, payload: {summary:string;startDateTime:string;
 
 export default function Calendario() {
   const HOY = fechaHoy();
-  const {data: session} = useSession();
-  const personaId = session?.user?.email?.split("@")[0] ?? "";
+  const personaId = useUsuarioActual().id;
 
   const tab = "mio" as const;
   const [modo,       setModo]       = useState<Modo>("cal");

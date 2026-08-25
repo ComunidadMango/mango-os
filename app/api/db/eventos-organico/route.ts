@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient, idPorEmail } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
 // Resuelve nombres de clientes manualmente (sin FK en Supabase)
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body      = await req.json();
-  const creadoPor = session.user?.email?.split("@")[0] ?? "unknown";
+  const creadoPor = session.user?.email ? (await idPorEmail(session.user.email)) ?? "unknown" : "unknown";
   const db        = createServerClient();
 
   const { data, error } = await db.from("eventos_organico").insert({

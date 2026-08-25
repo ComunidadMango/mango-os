@@ -1,13 +1,13 @@
 import { auth } from "@/auth";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient, idPorEmail } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
 // GET — últimas 30 notificaciones del usuario logueado
 export async function GET() {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const personaId = session.user?.email?.split("@")[0];
+  const personaId = await idPorEmail(session.user.email);
   if (!personaId) return NextResponse.json([]);
 
   const db = createServerClient();
@@ -24,9 +24,9 @@ export async function GET() {
 // PATCH — marca todas como leídas
 export async function PATCH() {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const personaId = session.user?.email?.split("@")[0];
+  const personaId = await idPorEmail(session.user.email);
   if (!personaId) return NextResponse.json({ ok: true });
 
   const db = createServerClient();

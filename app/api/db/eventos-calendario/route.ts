@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient, idPorEmail } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const personaId = session.user?.email?.split("@")[0];
+  const personaId = session.user?.email ? await idPorEmail(session.user.email) : null;
   if (!personaId) return NextResponse.json({ error: "Sin persona_id" }, { status: 400 });
 
   const body = await req.json() as {
@@ -65,7 +65,7 @@ export async function DELETE(req: Request) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const personaId = session.user?.email?.split("@")[0];
+  const personaId = session.user?.email ? await idPorEmail(session.user.email) : null;
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
   if (!id || !personaId) return NextResponse.json({ error: "Faltan params" }, { status: 400 });

@@ -6,6 +6,7 @@ import { equipo } from "@/lib/data";
 import { useUsuarioActual } from "@/lib/useUsuarioActual";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { enviarAPapelera } from "@/lib/papelera";
+import { createBrowserClient } from "@/lib/supabase";
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -152,6 +153,39 @@ export default function Notas() {
     } catch { /* silencioso */ }
     finally { setGuardandoDrive(false); setClientesBusqueda(""); }
   }
+
+  // Realtime: cuando alguien del equipo crea/edita/elimina una nota compartida
+  useEffect(() => {
+    const supabase = createBrowserClient();
+    const canal = supabase.channel("notas-equipo-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "notas_equipo" },
+        () => {
+          // Re-fetch completo para mergear correctamente con las notas locales
+          const local = localStorage.getItem(KEY_NOTAS_PAGE);
+          const parsed: Nota[] = local ? (JSON.parse(local) as Nota[]) : [];
+          fetch("/api/notas-equipo?yo=" + usuario.id)
+            .then(r => r.json())
+            .then((rows: Array<{ id: string; titulo: string; contenido: string; color: string | null; autor_id: string; creada_en: string; editada_en: string; compartido_con: string[] }>) => {
+              const supabaseNotes: Nota[] = rows.map((r) => {
+                const cc = r.compartido_con ?? [];
+                return {
+                  id: r.id, titulo: r.titulo, contenido: r.contenido, color: r.color,
+                  visibilidad: cc.length === 0 ? "equipo" as const : "personal" as const,
+                  autorId: r.autor_id, creadaEn: r.creada_en ?? r.editada_en,
+                  editadaEn: r.editada_en, compartidoCon: cc,
+                };
+              });
+              const supabaseIds = new Set(supabaseNotes.map(n => n.id));
+              const soloLocales = parsed.filter(n => !supabaseIds.has(n.id));
+              const merged = [...supabaseNotes, ...soloLocales].sort((a, b) => b.editadaEn.localeCompare(a.editadaEn));
+              startTransition(() => setNotas(merged));
+              try { localStorage.setItem(KEY_NOTAS_PAGE, JSON.stringify(merged)); } catch {}
+            })
+            .catch(() => {});
+        })
+      .subscribe();
+    return () => { supabase.removeChannel(canal); };
+  }, [usuario.id]);
 
   // Cargar localStorage y luego mergear con notas del equipo desde Supabase
   useEffect(() => {

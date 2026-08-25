@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, AlertTriangle, Clock, AtSign, TrendingUp, CheckCircle2 } from "lucide-react";
+import { X, AlertTriangle, Clock, AtSign, TrendingUp, CheckCircle2, PartyPopper } from "lucide-react";
 
 type Notif = {
   id: string;
@@ -24,20 +24,22 @@ function tiempoRelativo(iso: string): string {
 }
 
 const ICONO_TIPO: Record<string, typeof AlertTriangle> = {
-  asignada: CheckCircle2,
-  mencion: AtSign,
-  "nuevo-lead": TrendingUp,
-  seguimiento: Clock,
-  "tarea-vencida": AlertTriangle,
+  asignada:         CheckCircle2,
+  completada:       PartyPopper,
+  mencion:          AtSign,
+  "nuevo-lead":     TrendingUp,
+  seguimiento:      Clock,
+  "tarea-vencida":  AlertTriangle,
   "tarea-vence-hoy": Clock,
 };
 
 const TONO_TIPO: Record<string, string> = {
-  asignada: "bg-ok-bg text-ok",
-  mencion: "bg-lime-soft text-teal",
-  "nuevo-lead": "bg-ok-bg text-ok",
-  seguimiento: "bg-warn-bg text-warn",
-  "tarea-vencida": "bg-crit-bg text-crit",
+  asignada:          "bg-ok-bg text-ok",
+  completada:        "bg-lime-soft text-teal",
+  mencion:           "bg-lime-soft text-teal",
+  "nuevo-lead":      "bg-ok-bg text-ok",
+  seguimiento:       "bg-warn-bg text-warn",
+  "tarea-vencida":   "bg-crit-bg text-crit",
   "tarea-vence-hoy": "bg-warn-bg text-warn",
 };
 

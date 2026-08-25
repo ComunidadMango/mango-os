@@ -20,6 +20,15 @@ export function createBrowserClient(): SupabaseClient {
   );
 }
 
+// ─── Resolver el id interno de una persona a partir de su email real ─────────
+// NUNCA usar email.split("@")[0] como id: el id interno (ej. "cami") no tiene
+// por qué coincidir con el principio del mail real (ej. camila@...).
+export async function idPorEmail(email: string): Promise<string | null> {
+  const db = createServerClient();
+  const { data } = await db.from("personas").select("id").ilike("email", email).maybeSingle();
+  return data?.id ?? null;
+}
+
 // ─── Tipos de filas de Supabase (snake_case) ─────────────────────────────────
 
 export type PersonaRow = {

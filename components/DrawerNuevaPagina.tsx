@@ -100,10 +100,29 @@ export default function DrawerNuevaPagina({
     setPaso(2);
   }
 
-  function handleCrear() {
+  async function handleCrear() {
     if (!nombre.trim() || !tipo) return;
-    const id = `${tipo}-${Date.now()}`;
     const creadoEn = new Date().toISOString().slice(0, 10);
+
+    // Guardar en Supabase y obtener el ID real
+    try {
+      const res = await fetch("/api/db/paginas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: nombre.trim(), tipo, icono, visibilidad }),
+      });
+      if (res.ok) {
+        const data = await res.json() as { id: string };
+        onCrear({ id: data.id, nombre: nombre.trim(), tipo, icono, visibilidad, creadoEn });
+        reset();
+        onCerrar();
+        router.push(`/paginas/${data.id}`);
+        return;
+      }
+    } catch { /* fallback a ID local */ }
+
+    // Fallback si Supabase falla: ID local
+    const id = `${tipo}-${Date.now()}`;
     onCrear({ id, nombre: nombre.trim(), tipo, icono, visibilidad, creadoEn });
     reset();
     onCerrar();

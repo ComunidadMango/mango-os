@@ -13,6 +13,7 @@ import {
 } from "@/lib/data";
 import { useUsuarioActual } from "@/lib/useUsuarioActual";
 import DrawerTarea from "@/components/DrawerTarea";
+import { createBrowserClient } from "@/lib/supabase";
 
 // ─── Tipos y defaults de columnas ────────────────────────────────────────────
 
@@ -38,18 +39,26 @@ const PALETA: { punto: string; chipActivo: string }[] = [
   { punto: "bg-pink-400",   chipActivo: "bg-pink-400 text-ink"     },
 ];
 
-const KEY_COLUMNAS = "mango-tareas-columnas";
+type ColumnaRow = {
+  id: string; titulo: string; punto: string; chip_activo: string; orden: number;
+};
 
-function leerColumnas(): Columna[] {
-  if (typeof window === "undefined") return COLUMNAS_DEFAULT;
-  try {
-    const raw = localStorage.getItem(KEY_COLUMNAS);
-    return raw ? (JSON.parse(raw) as Columna[]) : COLUMNAS_DEFAULT;
-  } catch { return COLUMNAS_DEFAULT; }
+function rowAColumna(r: ColumnaRow): Columna {
+  return { id: r.id, titulo: r.titulo, punto: r.punto, chipActivo: r.chip_activo };
 }
 
-function guardarColumnas(cols: Columna[]) {
-  localStorage.setItem(KEY_COLUMNAS, JSON.stringify(cols));
+function tareaRowADomain(r: {
+  id: string; titulo: string; descripcion?: string; estado: string;
+  responsable: string; asignada_por: string | null;
+  cliente_id: string | null; vence: string | null; adjuntos: number;
+}): Tarea {
+  return {
+    id: r.id, titulo: r.titulo, descripcion: r.descripcion,
+    estado: r.estado, responsable: r.responsable,
+    asignadaPor: r.asignada_por ?? null,
+    clienteId: r.cliente_id ?? undefined,
+    vence: r.vence ?? undefined, adjuntos: r.adjuntos,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -65,7 +74,16 @@ export default function Tareas() {
   const [confirmColumna,  setConfirmColumna]  = useState<string | null>(null);
   const [confirmTarea,    setConfirmTarea]    = useState<string | null>(null);
 
-  useEffect(() => { startTransition(() => setColumnas(leerColumnas())); }, []);
+  // Cargar columnas desde Supabase al montar + Realtime
+  useEffect(() => {
+    fetch("/api/db/columnas-tareas")
+      .then(r => r.ok ? r.json() : null)
+      .then((rows: ColumnaRow[] | null) => {
+        if (!rows?.length) { startTransition(() => setColumnas(COLUMNAS_DEFAULT)); return; }
+        startTransition(() => setColumnas(rows.map(rowAColumna)));
+      })
+      .catch(() => startTransition(() => setColumnas(COLUMNAS_DEFAULT)));
+  }, []);
 
   // Cargar tareas desde Supabase al montar
   useEffect(() => {
@@ -73,18 +91,51 @@ export default function Tareas() {
       .then(r => r.ok ? r.json() : null)
       .then((rows) => {
         if (!rows?.length) return;
-        setTareasState(rows.map((r: {
-          id: string; titulo: string; descripcion?: string; estado: string;
-          responsable: string; asignada_por: string | null;
-          cliente_id: string | null; vence: string | null; adjuntos: number;
-        }) => ({
-          id: r.id, titulo: r.titulo, descripcion: r.descripcion,
-          estado: r.estado, responsable: r.responsable,
-          asignadaPor: r.asignada_por, clienteId: r.cliente_id ?? undefined,
-          vence: r.vence ?? undefined, adjuntos: r.adjuntos,
-        })));
+        setTareasState(rows.map(tareaRowADomain));
       })
       .catch(() => {});
+  }, []);
+
+  // Realtime: sincronizar tareas y columnas con todos los usuarios
+  useEffect(() => {
+    const supabase = createBrowserClient();
+    const canal = supabase.channel("tareas-y-columnas")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "tareas" },
+        (payload) => {
+          const nueva = tareaRowADomain(payload.new as Parameters<typeof tareaRowADomain>[0]);
+          setTareasState(prev => prev.some(t => t.id === nueva.id) ? prev : [nueva, ...prev]);
+        })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tareas" },
+        (payload) => {
+          const updated = tareaRowADomain(payload.new as Parameters<typeof tareaRowADomain>[0]);
+          setTareasState(prev => prev.map(t => t.id === updated.id ? updated : t));
+        })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "tareas" },
+        (payload) => {
+          const id = (payload.old as { id: string }).id;
+          setTareasState(prev => prev.filter(t => t.id !== id));
+        })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "columnas_tareas" },
+        (payload) => {
+          const col = rowAColumna(payload.new as ColumnaRow);
+          setColumnas(prev => prev.some(c => c.id === col.id) ? prev : [...prev, col]);
+        })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "columnas_tareas" },
+        (payload) => {
+          const col = rowAColumna(payload.new as ColumnaRow);
+          setColumnas(prev => prev.map(c => c.id === col.id ? col : c));
+        })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "columnas_tareas" },
+        (payload) => {
+          const id = (payload.old as { id: string }).id;
+          setColumnas(prev => prev.filter(c => c.id !== id));
+          setTareasState(prev => prev.map(t =>
+            t.estado === id ? { ...t, estado: "pendiente" } : t
+          ));
+        })
+      .subscribe();
+
+    return () => { supabase.removeChannel(canal); };
   }, []);
 
   const drawerAbierto = tareaActivaId !== null || modoCrear;
@@ -97,18 +148,25 @@ export default function Tareas() {
 
   // ── Columnas ──────────────────────────────────────────────────────────────
 
-  function setYGuardar(cols: Columna[]) { setColumnas(cols); guardarColumnas(cols); }
-
   function renombrarColumna(id: string, titulo: string) {
-    setYGuardar(columnas.map((c) => c.id === id ? { ...c, titulo } : c));
+    setColumnas(prev => prev.map((c) => c.id === id ? { ...c, titulo } : c));
+    fetch(`/api/db/columnas-tareas/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titulo }),
+    }).catch(() => {});
   }
 
   function agregarColumna() {
-    const color = PALETA[(columnas.length - COLUMNAS_DEFAULT.length) % PALETA.length];
-    const id    = `col-${Date.now()}`;
-    const nuevas = [...columnas, { id, titulo: "Nueva columna", ...color }];
-    setYGuardar(nuevas);
+    const color  = PALETA[(columnas.length - COLUMNAS_DEFAULT.length) % PALETA.length];
+    const id     = `col-${Date.now()}`;
+    const orden  = columnas.length;
+    const nueva: Columna = { id, titulo: "Nueva columna", ...color };
+    setColumnas(prev => [...prev, nueva]);
     setEditandoColId(id);
+    fetch("/api/db/columnas-tareas", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, titulo: "Nueva columna", punto: color.punto, chipActivo: color.chipActivo, orden }),
+    }).catch(() => {});
   }
 
   function eliminarColumna(id: string) {
@@ -118,7 +176,8 @@ export default function Tareas() {
     if (primerOtro) {
       setTareasState((prev) => prev.map((t) => t.estado === id ? { ...t, estado: primerOtro.id } : t));
     }
-    setYGuardar(columnas.filter((c) => c.id !== id));
+    setColumnas(prev => prev.filter((c) => c.id !== id));
+    fetch(`/api/db/columnas-tareas/${id}`, { method: "DELETE" }).catch(() => {});
   }
 
   // ── Tareas ────────────────────────────────────────────────────────────────
@@ -129,6 +188,21 @@ export default function Tareas() {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado }),
     }).catch(() => {});
+
+    // Notificar a quien asignó la tarea cuando se completa
+    if (estado === "hecha") {
+      const tarea = tareasState.find(t => t.id === id);
+      if (tarea?.asignadaPor && tarea.asignadaPor !== usuarioActual.id) {
+        fetch("/api/notify/tarea-completada", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            titulo:        tarea.titulo,
+            responsableId: tarea.responsable,
+            asignadoPorId: tarea.asignadaPor,
+          }),
+        }).catch(() => {});
+      }
+    }
   }
   function editarTarea(id: string, cambios: Partial<Omit<Tarea, "id">>) {
     setTareasState((prev) => prev.map((t) => t.id === id ? { ...t, ...cambios } : t));

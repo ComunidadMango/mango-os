@@ -24,9 +24,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           expiresAt: (account.expires_at ?? 0) * 1000,
         };
         // Guardar tokens en Supabase para que "Todos" pueda leer el calendar de cada persona
-        if (account.refresh_token) {
-          const personaId = (token.email as string ?? "").split("@")[0];
-          if (personaId) saveTokenToSupabase(personaId, jwtToken).catch(() => {});
+        if (account.refresh_token && token.email) {
+          const email = token.email as string;
+          resolverIdYGuardar(email, jwtToken).catch(() => {});
         }
         return jwtToken;
       }
@@ -44,6 +44,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
   },
 });
+
+async function resolverIdYGuardar(email: string, token: Record<string, unknown>) {
+  const { idPorEmail } = await import("@/lib/supabase");
+  const personaId = await idPorEmail(email);
+  if (personaId) await saveTokenToSupabase(personaId, token);
+}
 
 async function saveTokenToSupabase(personaId: string, token: Record<string, unknown>) {
   const { createServerClient } = await import("@/lib/supabase");
