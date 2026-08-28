@@ -483,8 +483,9 @@ function TarjetaTarea({
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
-                const next = nextCol ?? columnas[0];
-                onCambiarEstado(tarea.id, next.id);
+                // Al llegar a la última columna, se queda ahí — no vuelve a "Por hacer".
+                if (!nextCol) return;
+                onCambiarEstado(tarea.id, nextCol.id);
               }}
               className={`ml-auto rounded-chip px-2 py-0.5 text-[11px] font-bold transition-opacity hover:opacity-75 ${colActual.chipActivo}`}>
               {colActual.titulo}
