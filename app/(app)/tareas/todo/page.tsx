@@ -23,7 +23,7 @@ function fmtCorta(iso: string): string {
   return `${d} ${MESES[m]}`;
 }
 
-const PRIORIDAD_CICLO: Prioridad[] = ["alta", "media", "baja"];
+const PRIORIDADES: Prioridad[] = ["alta", "media", "baja"];
 const PRIORIDAD_ORDEN: Record<Prioridad, number> = { alta: 0, media: 1, baja: 2 };
 
 const PRIORIDAD_CFG: Record<Prioridad, { label: string; clase: string }> = {
@@ -35,7 +35,15 @@ const PRIORIDAD_CFG: Record<Prioridad, { label: string; clase: string }> = {
 export default function MiTodo() {
   const [items, setItems] = useState<Item[]>([]);
   const [nuevo, setNuevo] = useState("");
+  const [menuPrioridadId, setMenuPrioridadId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!menuPrioridadId) return;
+    function cerrar() { setMenuPrioridadId(null); }
+    document.addEventListener("click", cerrar);
+    return () => document.removeEventListener("click", cerrar);
+  }, [menuPrioridadId]);
 
   useEffect(() => {
     try {
@@ -81,12 +89,9 @@ export default function MiTodo() {
     guardar(items.filter((i) => i.id !== id));
   }
 
-  function ciclaPrioridad(id: string) {
-    guardar(items.map((i) => {
-      if (i.id !== id) return i;
-      const idx = PRIORIDAD_CICLO.indexOf(i.prioridad);
-      return { ...i, prioridad: PRIORIDAD_CICLO[(idx + 1) % PRIORIDAD_CICLO.length] };
-    }));
+  function setPrioridad(id: string, prioridad: Prioridad) {
+    guardar(items.map((i) => (i.id === id ? { ...i, prioridad } : i)));
+    setMenuPrioridadId(null);
   }
 
   const pendientes = [...items.filter((i) => !i.hecho)].sort(
@@ -147,15 +152,39 @@ export default function MiTodo() {
                     className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border-[1.5px] border-line transition-colors hover:border-ok hover:bg-ok/10"
                   />
 
-                  {/* Badge de prioridad — click para ciclar */}
-                  <button
-                    type="button"
-                    onClick={() => ciclaPrioridad(item.id)}
-                    title="Click para cambiar prioridad"
-                    className={`shrink-0 rounded-[5px] px-1.5 py-px text-[10.5px] font-bold transition-opacity hover:opacity-70 ${clase}`}
-                  >
-                    {label}
-                  </button>
+                  {/* Badge de prioridad — click abre el menú con las 3 opciones */}
+                  <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setMenuPrioridadId((v) => (v === item.id ? null : item.id)); }}
+                      title="Elegir prioridad"
+                      className={`rounded-[5px] px-1.5 py-px text-[10.5px] font-bold transition-opacity hover:opacity-70 ${clase}`}
+                    >
+                      {label}
+                    </button>
+
+                    {menuPrioridadId === item.id && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute left-0 top-full z-20 mt-1 w-[110px] overflow-hidden rounded-[10px] border border-line bg-paper shadow-xl"
+                      >
+                        {PRIORIDADES.map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => setPrioridad(item.id, p)}
+                            className={[
+                              "flex w-full items-center justify-between px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-line-soft",
+                              p === item.prioridad ? "font-bold text-ink" : "text-ink-2",
+                            ].join(" ")}
+                          >
+                            {PRIORIDAD_CFG[p].label}
+                            {p === item.prioridad && <Check size={12} strokeWidth={2.5} />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
                   <span className="flex-1 text-[14px] text-ink">{item.texto}</span>
 

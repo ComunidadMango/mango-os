@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, startTransition } from "react";
 import { Plus, X, Trash2, BookText, Pencil } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { enviarAPapelera } from "@/lib/papelera";
+import { createBrowserClient } from "@/lib/supabase";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -30,8 +31,6 @@ type Proceso = {
 function uid(): string {
   return Math.random().toString(36).slice(2, 10);
 }
-
-const KEY = "mango-procesos-v1";
 
 // ─── Datos iniciales ──────────────────────────────────────────────────────────
 
@@ -94,22 +93,46 @@ export default function Procesos() {
   const [confirmPaso,    setConfirmPaso]    = useState<{ etapaId: string; pasoId: string } | null>(null);
   const tituloRef = useRef<HTMLInputElement>(null);
 
-  // ── Carga ──────────────────────────────────────────────────────────────────
+  // ── Carga desde Supabase (compartido por todo el equipo, en vivo) ──────────
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(KEY);
-      const data: Proceso[] = raw ? JSON.parse(raw) : INICIAL;
-      startTransition(() => {
-        setProcesos(data);
-        setSelectedId(data[0]?.id ?? null);
+    let cancelled = false;
+    fetch("/api/db/procesos")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: Proceso[] | null) => {
+        if (cancelled) return;
+        // null = todavía no hay ningún registro guardado -> arrancamos con
+        // los procesos de ejemplo. [] = alguien ya borró todo a propósito.
+        const lista = data ?? INICIAL;
+        startTransition(() => {
+          setProcesos(lista);
+          setSelectedId((prev) => prev ?? lista[0]?.id ?? null);
+        });
+      })
+      .catch(() => {
+        startTransition(() => {
+          setProcesos(INICIAL);
+          setSelectedId(INICIAL[0]?.id ?? null);
+        });
       });
-    } catch {
-      startTransition(() => {
-        setProcesos(INICIAL);
-        setSelectedId(INICIAL[0]?.id ?? null);
-      });
-    }
+    return () => { cancelled = true; };
+  }, []);
+
+  // Realtime: ver cambios de otras personas del equipo al instante
+  useEffect(() => {
+    const supabase = createBrowserClient();
+    const canal = supabase.channel("procesos-equipo")
+      .on("postgres_changes", { event: "*", schema: "public", table: "procesos_data" },
+        (payload) => {
+          const nuevos = (payload.new as { data?: Proceso[] } | null)?.data;
+          if (!nuevos) return;
+          startTransition(() => {
+            setProcesos(nuevos);
+            setSelectedId((prev) => (prev && nuevos.some((p) => p.id === prev) ? prev : nuevos[0]?.id ?? null));
+          });
+        })
+      .subscribe();
+    return () => { supabase.removeChannel(canal); };
   }, []);
 
   useEffect(() => {
@@ -118,7 +141,10 @@ export default function Procesos() {
 
   function save(next: Proceso[]) {
     setProcesos(next);
-    localStorage.setItem(KEY, JSON.stringify(next));
+    fetch("/api/db/procesos", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(next),
+    }).catch(() => {});
   }
 
   const proceso = procesos.find((p) => p.id === selectedId) ?? null;
