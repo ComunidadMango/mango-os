@@ -200,16 +200,16 @@ export default function MiTodo() {
                 {/* Fechas: cuándo se escribió + para cuándo hay que hacerla */}
                 <div className="flex items-center gap-3 pl-8 text-[11.5px] text-ink-3">
                   <span>Escrita el {fmtCorta(item.creadoEn)}</span>
-                  <label className={`flex cursor-pointer items-center gap-1 transition-colors hover:text-ink-2 ${vencida ? "font-bold text-crit" : ""}`}>
+                  <span className={`relative flex cursor-pointer items-center gap-1 transition-colors hover:text-ink-2 ${vencida ? "font-bold text-crit" : ""}`}>
                     <CalendarDays size={12} strokeWidth={2} />
                     {item.vence ? `Vence ${fmtCorta(item.vence)}` : "Poner fecha"}
                     <input
                       type="date"
                       value={item.vence ?? ""}
                       onChange={(e) => setVence(item.id, e.target.value)}
-                      className="absolute h-0 w-0 opacity-0"
+                      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                     />
-                  </label>
+                  </span>
                 </div>
               </div>
             );
