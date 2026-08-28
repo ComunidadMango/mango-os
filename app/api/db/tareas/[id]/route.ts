@@ -11,13 +11,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const db = createServerClient();
 
   const updates: Record<string, unknown> = {};
-  if (body.titulo      !== undefined) updates.titulo      = body.titulo;
-  if (body.descripcion !== undefined) updates.descripcion = body.descripcion;
-  if (body.estado      !== undefined) updates.estado      = body.estado;
-  if (body.responsable !== undefined) updates.responsable = body.responsable;
-  if (body.clienteId   !== undefined) updates.cliente_id  = body.clienteId;
-  if (body.vence       !== undefined) updates.vence       = body.vence;
-  if (body.adjuntos    !== undefined) updates.adjuntos    = body.adjuntos;
+  if (body.titulo        !== undefined) updates.titulo          = body.titulo;
+  if (body.descripcion   !== undefined) updates.descripcion     = body.descripcion;
+  if (body.estado        !== undefined) updates.estado          = body.estado;
+  if (body.responsable   !== undefined) updates.responsable     = body.responsable;
+  if (body.responsables  !== undefined) {
+    updates.responsables = body.responsables;
+    if (body.responsable === undefined) updates.responsable = body.responsables[0];
+  }
+  if (body.completadosPor !== undefined) updates.completados_por = body.completadosPor;
+  if (body.clienteId     !== undefined) updates.cliente_id      = body.clienteId;
+  if (body.vence          !== undefined) updates.vence          = body.vence;
+  if (body.adjuntos       !== undefined) updates.adjuntos       = body.adjuntos;
 
   const { error } = await db.from("tareas").update(updates).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

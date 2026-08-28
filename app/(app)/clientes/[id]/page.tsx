@@ -87,6 +87,8 @@ export default async function DetalleCliente(props: PageProps<"/clientes/[id]">)
     tareas = (tareasRes.data ?? []).map((r: TareaRow) => ({
       id: r.id, titulo: r.titulo, descripcion: r.descripcion ?? undefined,
       estado: r.estado as Tarea["estado"], responsable: r.responsable,
+      responsables: r.responsables?.length ? r.responsables : [r.responsable],
+      completadosPor: r.completados_por ?? [],
       asignadaPor: r.asignada_por, clienteId: r.cliente_id ?? undefined,
       vence: r.vence ?? undefined, adjuntos: r.adjuntos,
     }));

@@ -31,6 +31,8 @@ function draftVacio(usuarioId: string): Draft {
     titulo: "",
     estado: "pendiente",
     responsable: usuarioId,
+    responsables: [usuarioId],
+    completadosPor: [],
     asignadaPor: usuarioId,
     adjuntos: 0,
   };
@@ -42,6 +44,8 @@ function tareaADraft(t: Tarea): Draft {
     descripcion: t.descripcion,
     estado: t.estado,
     responsable: t.responsable,
+    responsables: t.responsables,
+    completadosPor: t.completadosPor,
     asignadaPor: t.asignadaPor,
     clienteId: t.clienteId,
     vence: t.vence,
@@ -82,6 +86,7 @@ type Props = {
   onCambiarEstado: (id: string, estado: string) => void;
   onEditar: (id: string, cambios: Partial<Draft>) => void;
   onCrear: (nueva: Draft) => void;
+  onMarcarMiParte: (id: string, hecho: boolean) => void;
   onEliminar: (id: string) => void;
 };
 
@@ -93,6 +98,7 @@ export default function DrawerTarea({
   onCambiarEstado,
   onEditar,
   onCrear,
+  onMarcarMiParte,
   onEliminar,
 }: Props) {
   const crear = tarea === null;
@@ -158,9 +164,29 @@ export default function DrawerTarea({
     }
   }
 
-  function cambiarResponsable(id: string) {
-    setDraft((d) => ({ ...d, responsable: id }));
-    if (!crear && tarea) onEditar(tarea.id, { responsable: id });
+  function toggleResponsable(id: string) {
+    const yaEstaba = draft.responsables.includes(id);
+    // Siempre tiene que quedar al menos un responsable.
+    if (yaEstaba && draft.responsables.length === 1) return;
+
+    const responsables = yaEstaba
+      ? draft.responsables.filter((r) => r !== id)
+      : [...draft.responsables, id];
+
+    setDraft((d) => ({ ...d, responsables, responsable: responsables[0] }));
+    if (!crear && tarea) {
+      onEditar(tarea.id, { responsables, responsable: responsables[0] });
+      // Avisale a la persona recién agregada, si no se la asignó a sí misma.
+      if (!yaEstaba && id !== usuario.id) {
+        fetch("/api/notify/nueva-tarea", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            titulo: draft.titulo, descripcion: draft.descripcion,
+            vence: draft.vence, responsableId: id, asignadoPorId: usuario.id,
+          }),
+        }).catch(() => {});
+      }
+    }
   }
 
   function cambiarCliente(id: string) {
@@ -180,11 +206,12 @@ export default function DrawerTarea({
     if (!titulo) return;
     onCrear({ ...draft, titulo });
 
-    // Notificar al responsable si es diferente al usuario que crea la tarea
-    if (draft.responsable !== usuario.id) {
-      const clienteNombre = draft.clienteId
-        ? clientes.find((c) => c.id === draft.clienteId)?.nombre
-        : undefined;
+    // Notificar a cada responsable, salvo a quien se la asigna a sí mismo.
+    const clienteNombre = draft.clienteId
+      ? clientes.find((c) => c.id === draft.clienteId)?.nombre
+      : undefined;
+    for (const responsableId of draft.responsables) {
+      if (responsableId === usuario.id) continue;
       fetch("/api/notify/nueva-tarea", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -193,7 +220,7 @@ export default function DrawerTarea({
           descripcion: draft.descripcion,
           clienteNombre,
           vence: draft.vence,
-          responsableId: draft.responsable,
+          responsableId,
           asignadoPorId: usuario.id,
         }),
       }).catch(() => {});
@@ -296,19 +323,19 @@ export default function DrawerTarea({
 
           <div className="mb-5 border-t border-line" />
 
-          {/* Responsable */}
+          {/* Responsables — se puede elegir más de uno */}
           <div className="mb-5">
             <p className="mb-2 font-display text-[11px] uppercase tracking-[0.09em] text-ink-3">
-              Responsable
+              Responsables {draft.responsables.length > 1 && `(${draft.responsables.length})`}
             </p>
             <div className="flex flex-wrap gap-2">
               {equipo.map((p) => {
-                const activo = draft.responsable === p.id;
+                const activo = draft.responsables.includes(p.id);
                 return (
                   <button
                     key={p.id}
                     type="button"
-                    onClick={() => cambiarResponsable(p.id)}
+                    onClick={() => toggleResponsable(p.id)}
                     className={[
                       "flex items-center gap-2 rounded-[10px] border px-2.5 py-1.5 text-[13px] transition-all",
                       activo
@@ -330,6 +357,48 @@ export default function DrawerTarea({
               })}
             </div>
           </div>
+
+          {/* Progreso — solo cuando hay más de un responsable, y viendo una tarea ya creada */}
+          {!crear && tarea && draft.responsables.length > 1 && (
+            <div className="mb-5">
+              <p className="mb-2 font-display text-[11px] uppercase tracking-[0.09em] text-ink-3">
+                Quién ya terminó su parte
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {draft.responsables.map((id) => {
+                  const p = persona(id);
+                  if (!p) return null;
+                  const hecho = draft.completadosPor.includes(id);
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => {
+                        const nuevo = hecho
+                          ? draft.completadosPor.filter((x) => x !== id)
+                          : [...draft.completadosPor, id];
+                        setDraft((d) => ({ ...d, completadosPor: nuevo }));
+                        onMarcarMiParte(tarea.id, !hecho);
+                      }}
+                      className={[
+                        "flex items-center gap-2.5 rounded-[10px] border px-3 py-2 text-left text-[13px] transition-all",
+                        hecho ? "border-ok/30 bg-ok-bg text-ok" : "border-line bg-card text-ink-2 hover:border-ink-3/50",
+                      ].join(" ")}
+                    >
+                      <span className="notch-sm flex h-5 w-5 shrink-0 items-center justify-center rounded-[7px] bg-lime-soft text-[10px] font-bold text-ink">
+                        {p.inicial}
+                      </span>
+                      <span className="flex-1">{p.nombre}</span>
+                      {hecho && <span className="text-[12px] font-bold">✓ Listo</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-1.5 text-[12px] text-ink-3">
+                La tarea pasa sola a la última columna cuando estén todos.
+              </p>
+            </div>
+          )}
 
           {/* Asignada por — solo en vista */}
           {!crear && asigno && (

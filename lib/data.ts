@@ -240,7 +240,9 @@ export type Tarea = {
   titulo: string;
   descripcion?: string;
   estado: EstadoTarea;
-  responsable: string;
+  responsable: string;       // asignado principal (compatibilidad con recordatorios existentes)
+  responsables: string[];    // lista completa de asignados
+  completadosPor: string[];  // quiénes de "responsables" ya marcaron su parte como hecha
   asignadaPor: string | null;
   clienteId?: string;
   vence?: string;
@@ -254,6 +256,8 @@ export const tareas: Tarea[] = [
     descripcion: "En este link están los guiones para mandarle a Maru y las descripciones de las placas y carruseles:\nhttps://docs.google.com/document/d/1FFgldmypDiSdbz_kL778XXGgfawQRbTx/edit?usp=drive_link&ouid=105517922283100650936&rtpof=true&sd=true\n\nContenido:\n1) Video voz en off\n2) Video selfie Maru\n3) Placa estática\n4) Carrusel\n\nDeja el conjunto siguiente mañana al volver de grabar.",
     estado: "pendiente",
     responsable: "feli",
+    responsables: ["feli"],
+    completadosPor: [],
     asignadaPor: "maru",
     clienteId: "easy-living",
     vence: "2026-08-19",
@@ -265,6 +269,8 @@ export const tareas: Tarea[] = [
     descripcion: "Adjunto link del brief:\nhttps://docs.google.com/spreadsheets/d/10zTGiTWUgFVaJQLfooSxDFD0IGNrwEcE/edit?gid=1639559081#gid=1639559081\n\nVIDEOS:\n1) Comprar un repuesto · CL 2 AN 2 (Técnicos país)\n2) Si estás lejos · CL 2 AN 1 (Técnicos país)\n3) Perdiste un cliente · CL 2 AN 1 (Técnicos país)\n4) Hay dos formas · CL 2 AN 2 (Técnicos país)\n\nPLACAS:\n1) Repuestos línea blanca · Cluster 2 AN 1\n2) Comparativa · Cluster 2 AN 1\n3) Si no es lo que necesito · Cluster 2 AN 2\n4) Así compras en Cuenca · Cluster 2 AN 2",
     estado: "pendiente",
     responsable: "feli",
+    responsables: ["feli"],
+    completadosPor: [],
     asignadaPor: "maru",
     clienteId: "grupo-cuenca",
     vence: "2026-08-19",

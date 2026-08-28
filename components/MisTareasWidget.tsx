@@ -71,22 +71,25 @@ export default function MisTareasWidget() {
         if (!res.ok) throw new Error("fetch failed");
         const rows = await res.json() as Array<{
           id: string; titulo: string; descripcion: string | null;
-          estado: string; responsable: string; asignada_por: string | null;
+          estado: string; responsable: string; responsables: string[] | null;
+          completados_por: string[] | null; asignada_por: string | null;
           cliente_id: string | null; vence: string | null; adjuntos: number;
         }>;
         if (!cancelled) {
           setMisTareas(rows
             .filter(r => r.estado !== "hecha")
             .map(r => ({
-              id:          r.id,
-              titulo:      r.titulo,
-              descripcion: r.descripcion ?? undefined,
-              estado:      r.estado as Tarea["estado"],
-              responsable: r.responsable,
-              asignadaPor: r.asignada_por,
-              clienteId:   r.cliente_id ?? undefined,
-              vence:       r.vence ?? undefined,
-              adjuntos:    r.adjuntos,
+              id:             r.id,
+              titulo:         r.titulo,
+              descripcion:    r.descripcion ?? undefined,
+              estado:         r.estado as Tarea["estado"],
+              responsable:    r.responsable,
+              responsables:   r.responsables?.length ? r.responsables : [r.responsable],
+              completadosPor: r.completados_por ?? [],
+              asignadaPor:    r.asignada_por,
+              clienteId:      r.cliente_id ?? undefined,
+              vence:          r.vence ?? undefined,
+              adjuntos:       r.adjuntos,
             }))
           );
         }

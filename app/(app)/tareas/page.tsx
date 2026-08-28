@@ -49,12 +49,15 @@ function rowAColumna(r: ColumnaRow): Columna {
 
 function tareaRowADomain(r: {
   id: string; titulo: string; descripcion?: string; estado: string;
-  responsable: string; asignada_por: string | null;
+  responsable: string; responsables?: string[] | null; completados_por?: string[] | null;
+  asignada_por: string | null;
   cliente_id: string | null; vence: string | null; adjuntos: number;
 }): Tarea {
   return {
     id: r.id, titulo: r.titulo, descripcion: r.descripcion,
     estado: r.estado, responsable: r.responsable,
+    responsables: r.responsables?.length ? r.responsables : [r.responsable],
+    completadosPor: r.completados_por ?? [],
     asignadaPor: r.asignada_por ?? null,
     clienteId: r.cliente_id ?? undefined,
     vence: r.vence ?? undefined, adjuntos: r.adjuntos,
@@ -149,7 +152,7 @@ export default function Tareas() {
 
   const visibles =
     vista === "mias"
-      ? tareasState.filter((t) => t.responsable === usuarioActual.id)
+      ? tareasState.filter((t) => t.responsables.includes(usuarioActual.id))
       : tareasState;
 
   // ── Columnas ──────────────────────────────────────────────────────────────
@@ -188,27 +191,60 @@ export default function Tareas() {
 
   // ── Tareas ────────────────────────────────────────────────────────────────
 
+  function notificarCompletada(tarea: Tarea) {
+    if (tarea.asignadaPor && tarea.asignadaPor !== usuarioActual.id) {
+      fetch("/api/notify/tarea-completada", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo:        tarea.titulo,
+          responsableId: tarea.responsable,
+          asignadoPorId: tarea.asignadaPor,
+        }),
+      }).catch(() => {});
+    }
+  }
+
   function cambiarEstado(id: string, estado: string) {
+    const tarea = tareasState.find(t => t.id === id);
+    if (!tarea) return;
+    const finalId = columnas[columnas.length - 1]?.id;
+
+    // Tarea con varios responsables llegando a la última columna: no se
+    // completa de una — cada quien tiene que marcar su parte primero.
+    if (estado === finalId && tarea.responsables.length > 1) {
+      marcarMiParte(id, true);
+      return;
+    }
+
     setTareasState((prev) => prev.map((t) => t.id === id ? { ...t, estado } : t));
     fetch(`/api/db/tareas/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado }),
     }).catch(() => {});
 
-    // Notificar a quien asignó la tarea cuando se completa
-    if (estado === "hecha") {
-      const tarea = tareasState.find(t => t.id === id);
-      if (tarea?.asignadaPor && tarea.asignadaPor !== usuarioActual.id) {
-        fetch("/api/notify/tarea-completada", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            titulo:        tarea.titulo,
-            responsableId: tarea.responsable,
-            asignadoPorId: tarea.asignadaPor,
-          }),
-        }).catch(() => {});
-      }
-    }
+    if (estado === "hecha") notificarCompletada(tarea);
+  }
+
+  // Para tareas con varios responsables: cada persona marca su propia parte.
+  // Recién cuando están todos, la tarea pasa sola a la última columna.
+  function marcarMiParte(id: string, hecho: boolean) {
+    const tarea = tareasState.find(t => t.id === id);
+    if (!tarea) return;
+    const finalId = columnas[columnas.length - 1]?.id;
+
+    const completadosPor = hecho
+      ? Array.from(new Set([...tarea.completadosPor, usuarioActual.id]))
+      : tarea.completadosPor.filter(p => p !== usuarioActual.id);
+    const todosListos = tarea.responsables.length > 0 && tarea.responsables.every(r => completadosPor.includes(r));
+    const nuevoEstado = todosListos && finalId ? finalId : tarea.estado;
+
+    setTareasState(prev => prev.map(t => t.id === id ? { ...t, completadosPor, estado: nuevoEstado } : t));
+    fetch(`/api/db/tareas/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ completadosPor, estado: nuevoEstado }),
+    }).catch(() => {});
+
+    if (todosListos) notificarCompletada({ ...tarea, completadosPor, estado: nuevoEstado });
   }
   function editarTarea(id: string, cambios: Partial<Omit<Tarea, "id">>) {
     setTareasState((prev) => prev.map((t) => t.id === id ? { ...t, ...cambios } : t));
@@ -332,7 +368,8 @@ export default function Tareas() {
                   <TarjetaTarea key={t.id} tarea={t} columnas={columnas} mostrarQuien={vista === "equipo"}
                     onClick={() => { setModoCrear(false); setTareaActivaId(t.id); }}
                     onCambiarEstado={cambiarEstado}
-                    arrastrandoId={arrastrandoId} setArrastrandoId={setArrastrandoId} />
+                    arrastrandoId={arrastrandoId} setArrastrandoId={setArrastrandoId}
+                    usuarioActualId={usuarioActual.id} onMarcarMiParte={marcarMiParte} />
                 ))
               )}
             </section>
@@ -358,6 +395,7 @@ export default function Tareas() {
         onCambiarEstado={cambiarEstado}
         onEditar={editarTarea}
         onCrear={crearTarea}
+        onMarcarMiParte={marcarMiParte}
         onEliminar={(id) => setConfirmTarea(id)}
       />
 
@@ -392,16 +430,21 @@ export default function Tareas() {
 
 function TarjetaTarea({
   tarea, columnas, mostrarQuien, onClick, onCambiarEstado, arrastrandoId, setArrastrandoId,
+  usuarioActualId, onMarcarMiParte,
 }: {
   tarea: Tarea; columnas: Columna[]; mostrarQuien: boolean;
   onClick: () => void;
   onCambiarEstado: (id: string, estado: string) => void;
   arrastrandoId: string | null;
   setArrastrandoId: (id: string | null) => void;
+  usuarioActualId: string;
+  onMarcarMiParte: (id: string, hecho: boolean) => void;
 }) {
   const asigno = tarea.asignadaPor ? persona(tarea.asignadaPor) : null;
-  const resp   = persona(tarea.responsable);
+  const responsables = tarea.responsables.map(persona).filter((p): p is NonNullable<typeof p> => !!p);
   const cli    = tarea.clienteId ? cliente(tarea.clienteId) : null;
+  const multi  = responsables.length > 1;
+  const miParteHecha = tarea.completadosPor.includes(usuarioActualId);
   const venceHoy = tarea.vence === new Date().toISOString().slice(0, 10);
 
   const colIdx    = columnas.findIndex((c) => c.id === tarea.estado);
@@ -438,11 +481,39 @@ function TarjetaTarea({
         )}
 
         <footer className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px] text-ink-3">
-          {mostrarQuien && resp && (
+          {mostrarQuien && responsables.length > 0 && (
             <span className="flex items-center gap-1.5">
-              <span className="flex h-5 w-5 items-center justify-center rounded-[7px] bg-lime-soft text-[10px] font-bold text-ink">{resp.inicial}</span>
-              {resp.nombre}
+              <span className="flex items-center -space-x-1.5">
+                {responsables.map((p) => (
+                  <span key={p.id}
+                    title={p.nombre}
+                    className="flex h-5 w-5 items-center justify-center rounded-[7px] border border-card bg-lime-soft text-[10px] font-bold text-ink">
+                    {p.inicial}
+                  </span>
+                ))}
+              </span>
+              {multi
+                ? `${responsables.length} personas`
+                : responsables[0].nombre}
             </span>
+          )}
+          {multi && (
+            <span className={`flex items-center gap-1 rounded-chip px-1.5 py-0.5 text-[10.5px] font-bold ${
+              tarea.completadosPor.length === responsables.length ? "bg-ok-bg text-ok" : "bg-line-soft text-ink-2"
+            }`}>
+              {tarea.completadosPor.length}/{responsables.length} listos
+            </span>
+          )}
+          {multi && responsables.some((p) => p.id === usuarioActualId) && (
+            <button type="button" draggable={false}
+              title={miParteHecha ? "Desmarcar mi parte" : "Marcar mi parte como hecha"}
+              onClick={(e) => { e.stopPropagation(); onMarcarMiParte(tarea.id, !miParteHecha); }}
+              className={[
+                "flex items-center gap-1 rounded-chip px-1.5 py-0.5 text-[10.5px] font-bold transition-colors",
+                miParteHecha ? "bg-ok text-paper" : "border border-line text-ink-2 hover:bg-line-soft",
+              ].join(" ")}>
+              {miParteHecha ? "✓ Mi parte" : "Marcar mi parte"}
+            </button>
           )}
           {tarea.adjuntos > 0 && (
             <span className="flex items-center gap-1"><Paperclip size={12} strokeWidth={2} />{tarea.adjuntos}</span>

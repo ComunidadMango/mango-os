@@ -102,6 +102,8 @@ export type TareaRow = {
   descripcion: string | null;
   estado: string;
   responsable: string;
+  responsables: string[] | null;
+  completados_por: string[] | null;
   asignada_por: string | null;
   cliente_id: string | null;
   vence: string | null;

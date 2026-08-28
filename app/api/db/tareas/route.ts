@@ -13,7 +13,8 @@ export async function GET(req: Request) {
 
   let query = db.from("tareas").select("*").order("created_at", { ascending: false });
 
-  if (responsable) query = query.eq("responsable", responsable);
+  // "contains" para que también aparezca a los co-asignados, no solo al principal
+  if (responsable) query = query.contains("responsables", [responsable]);
   if (clienteId)   query = query.eq("cliente_id", clienteId);
 
   const { data, error } = await query;
@@ -28,17 +29,23 @@ export async function POST(req: Request) {
   const body = await req.json();
   const db = createServerClient();
 
+  const responsables: string[] = Array.isArray(body.responsables) && body.responsables.length
+    ? body.responsables
+    : [body.responsable];
+
   const { data, error } = await db
     .from("tareas")
     .insert({
-      titulo:       body.titulo,
-      descripcion:  body.descripcion ?? null,
-      estado:       body.estado ?? "pendiente",
-      responsable:  body.responsable,
-      asignada_por: body.asignadaPor ?? null,
-      cliente_id:   body.clienteId ?? null,
-      vence:        body.vence ?? null,
-      adjuntos:     body.adjuntos ?? 0,
+      titulo:          body.titulo,
+      descripcion:     body.descripcion ?? null,
+      estado:          body.estado ?? "pendiente",
+      responsable:     responsables[0],
+      responsables,
+      completados_por: [],
+      asignada_por:    body.asignadaPor ?? null,
+      cliente_id:      body.clienteId ?? null,
+      vence:           body.vence ?? null,
+      adjuntos:        body.adjuntos ?? 0,
     })
     .select()
     .single();
