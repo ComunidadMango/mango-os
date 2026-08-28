@@ -91,8 +91,12 @@ export default function Tareas() {
   useEffect(() => {
     fetch("/api/db/tareas")
       .then(r => r.ok ? r.json() : null)
+      // null = la request falló (offline, error de servidor): seguimos con el
+      // respaldo local. Un array (aunque esté vacío) es la fuente real de la
+      // base — lo mostramos tal cual, para no tapar con datos de ejemplo
+      // viejos el hecho de que la base esté realmente vacía.
       .then((rows) => {
-        if (!rows?.length) return;
+        if (!Array.isArray(rows)) return;
         setTareasState(rows.map(tareaRowADomain));
       })
       .catch(() => {});
