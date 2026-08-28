@@ -73,6 +73,8 @@ export default function Tareas() {
   const [editandoColId,   setEditandoColId]   = useState<string | null>(null);
   const [confirmColumna,  setConfirmColumna]  = useState<string | null>(null);
   const [confirmTarea,    setConfirmTarea]    = useState<string | null>(null);
+  const [arrastrandoId,   setArrastrandoId]   = useState<string | null>(null);
+  const [colSobre,        setColSobre]        = useState<string | null>(null);
 
   // Cargar columnas desde Supabase al montar + Realtime
   useEffect(() => {
@@ -266,7 +268,20 @@ export default function Tareas() {
         {columnas.map((col) => {
           const items = visibles.filter((t) => t.estado === col.id);
           return (
-            <section key={col.id} className="flex min-w-[240px] max-w-[280px] flex-1 flex-col gap-2.5">
+            <section key={col.id}
+              onDragOver={(e) => { e.preventDefault(); setColSobre(col.id); }}
+              onDragLeave={() => setColSobre((c) => (c === col.id ? null : c))}
+              onDrop={(e) => {
+                e.preventDefault();
+                const id = e.dataTransfer.getData("text/plain");
+                if (id) cambiarEstado(id, col.id);
+                setColSobre(null);
+                setArrastrandoId(null);
+              }}
+              className={[
+                "flex min-w-[240px] max-w-[280px] flex-1 flex-col gap-2.5 rounded-card transition-colors",
+                colSobre === col.id ? "bg-lime-soft/30 outline-dashed outline-2 outline-lime/50" : "",
+              ].join(" ")}>
               {/* Header columna */}
               <header className="group flex items-center gap-2 border-b-2 border-line pb-2">
                 <span className={`h-2 w-2 shrink-0 rounded-full ${col.punto}`} />
@@ -312,7 +327,8 @@ export default function Tareas() {
                 items.map((t) => (
                   <TarjetaTarea key={t.id} tarea={t} columnas={columnas} mostrarQuien={vista === "equipo"}
                     onClick={() => { setModoCrear(false); setTareaActivaId(t.id); }}
-                    onCambiarEstado={cambiarEstado} />
+                    onCambiarEstado={cambiarEstado}
+                    arrastrandoId={arrastrandoId} setArrastrandoId={setArrastrandoId} />
                 ))
               )}
             </section>
@@ -371,84 +387,41 @@ export default function Tareas() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function TarjetaTarea({
-  tarea, columnas, mostrarQuien, onClick, onCambiarEstado,
+  tarea, columnas, mostrarQuien, onClick, onCambiarEstado, arrastrandoId, setArrastrandoId,
 }: {
   tarea: Tarea; columnas: Columna[]; mostrarQuien: boolean;
   onClick: () => void;
   onCambiarEstado: (id: string, estado: string) => void;
+  arrastrandoId: string | null;
+  setArrastrandoId: (id: string | null) => void;
 }) {
-  const [dragX, setDragX]     = useState(0);
-  const dragging              = useRef(false);
-  const startX                = useRef(0);
-  const moved                 = useRef(false);
-
   const asigno = tarea.asignadaPor ? persona(tarea.asignadaPor) : null;
   const resp   = persona(tarea.responsable);
   const cli    = tarea.clienteId ? cliente(tarea.clienteId) : null;
   const venceHoy = tarea.vence === new Date().toISOString().slice(0, 10);
 
-  const colIdx  = columnas.findIndex((c) => c.id === tarea.estado);
+  const colIdx    = columnas.findIndex((c) => c.id === tarea.estado);
   const colActual = columnas[colIdx];
   const nextCol   = colIdx < columnas.length - 1 ? columnas[colIdx + 1] : null;
-  const prevCol   = colIdx > 0 ? columnas[colIdx - 1] : null;
-
-  const THRESHOLD = 72;
-  const MAX_DRAG  = 108;
-  const clamped   = Math.max(-MAX_DRAG, Math.min(MAX_DRAG, dragX));
-  const showRight = clamped > 14  && nextCol !== null;
-  const showLeft  = clamped < -14 && prevCol !== null;
-  const rightOk   = clamped >= THRESHOLD;
-  const leftOk    = clamped <= -THRESHOLD;
-
-  function onPointerDown(e: React.PointerEvent<HTMLElement>) {
-    if ((e.target as Element).closest("[data-nodrag]")) return;
-    dragging.current = true; moved.current = false; startX.current = e.clientX;
-    e.currentTarget.setPointerCapture(e.pointerId);
-  }
-  function onPointerMove(e: React.PointerEvent<HTMLElement>) {
-    if (!dragging.current) return;
-    const dx = e.clientX - startX.current;
-    if (Math.abs(dx) > 6) moved.current = true;
-    setDragX(dx);
-  }
-  function onPointerUp(e: React.PointerEvent<HTMLElement>) {
-    if (!dragging.current) return;
-    dragging.current = false;
-    const dx = e.clientX - startX.current;
-    setDragX(0);
-    if      (dx >= THRESHOLD && nextCol) onCambiarEstado(tarea.id, nextCol.id);
-    else if (dx <= -THRESHOLD && prevCol) onCambiarEstado(tarea.id, prevCol.id);
-    else if (!moved.current) onClick();
-  }
 
   return (
     <article
-      className="relative select-none touch-pan-y overflow-hidden rounded-card border border-line bg-card"
-      style={{ transform: `translateX(${clamped}px)`, transition: dragX === 0 ? "transform 0.18s cubic-bezier(0.25,0.46,0.45,0.94)" : "none" }}
-      onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
-      onPointerCancel={() => { dragging.current = false; setDragX(0); }}>
-
-      {showRight && nextCol && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-end pr-3"
-          style={{ opacity: Math.min(1, (clamped - 14) / 44) }}>
-          <span className={["rounded-chip px-2.5 py-1 text-[11.5px] font-bold", rightOk ? "bg-lime text-ink" : "bg-lime-soft text-ink"].join(" ")}>
-            {nextCol.titulo} →
-          </span>
-        </div>
-      )}
-      {showLeft && prevCol && (
-        <div className="pointer-events-none absolute inset-0 flex items-center pl-3"
-          style={{ opacity: Math.min(1, (-clamped - 14) / 44) }}>
-          <span className={["rounded-chip px-2.5 py-1 text-[11.5px] font-bold", leftOk ? "bg-line text-ink" : "bg-line-soft text-ink-2"].join(" ")}>
-            ← {prevCol.titulo}
-          </span>
-        </div>
-      )}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", tarea.id);
+        e.dataTransfer.effectAllowed = "move";
+        setArrastrandoId(tarea.id);
+      }}
+      onDragEnd={() => setArrastrandoId(null)}
+      className={[
+        "relative overflow-hidden rounded-card border border-line bg-card cursor-grab active:cursor-grabbing",
+        arrastrandoId === tarea.id ? "opacity-40" : "",
+      ].join(" ")}>
 
       <div className="cursor-pointer p-3.5 transition-all hover:-translate-y-px hover:shadow-sm"
-        style={{ opacity: Math.abs(clamped) > 14 ? Math.max(0.55, 1 - Math.abs(clamped) / 160) : 1 }}>
+        onClick={onClick}>
         {cli && (
-          <Link href={`/clientes/${cli.id}`} onClick={(e) => e.stopPropagation()}
+          <Link href={`/clientes/${cli.id}`} draggable={false} onClick={(e) => e.stopPropagation()}
             className="mb-2 inline-block rounded-chip bg-lime-soft px-2 py-0.5 text-[11px] font-bold text-ink transition-opacity hover:opacity-75">
             {cli.nombre}
           </Link>
@@ -479,8 +452,7 @@ function TarjetaTarea({
 
           {/* Chip de estado clickeable */}
           {colActual && (
-            <button type="button" data-nodrag title="Cambiar estado"
-              onPointerDown={(e) => e.stopPropagation()}
+            <button type="button" draggable={false} title="Cambiar estado"
               onClick={(e) => {
                 e.stopPropagation();
                 // Al llegar a la última columna, se queda ahí — no vuelve a "Por hacer".
